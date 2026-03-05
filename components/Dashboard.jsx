@@ -6,16 +6,17 @@ import {
   convergenceScore,
   EMERGENCY_SQUAWKS,
 } from '../lib/threatClassifier';
-import StatusBar from './StatusBar';
-import LeftPanel from './LeftPanel';
-import RightPanel from './RightPanel';
-import BottomBar from './BottomBar';
+import StatusBar     from './StatusBar';
+import LeftPanel     from './LeftPanel';
+import RightPanel    from './RightPanel';
+import BottomBar     from './BottomBar';
+import LiveNewsPanel from './LiveNewsPanel';
 
-const Globe = lazy(() => import('./Globe'));
+const Map2D = lazy(() => import('./Map2D'));
 
 const OPENSKY_POLL_MS = 10000;
-const MIL_POLL_MS = 30000;
-const MAX_LOG = 120;
+const MIL_POLL_MS     = 30000;
+const MAX_LOG         = 120;
 
 function nowStr() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -32,32 +33,31 @@ function parseOpenSkyState(s) {
 }
 
 export default function Dashboard() {
-  const [flights, setFlights] = useState([]);
-  const [militaryFlights, setMilitaryFlights] = useState([]);
-  const [threats, setThreats] = useState([]);
+  const [flights,           setFlights]           = useState([]);
+  const [militaryFlights,   setMilitaryFlights]   = useState([]);
+  const [threats,           setThreats]           = useState([]);
   const [convergenceAlerts, setConvergenceAlerts] = useState([]);
-  const [overallLevel, setOverallLevel] = useState(0);
-  const [newsItems, setNewsItems] = useState([]);
-  const [eventLog, setEventLog] = useState([]);
-  const [selectedFlight, setSelectedFlight] = useState(null);
-  const [globeFocus, setGlobeFocus] = useState(false);
+  const [overallLevel,      setOverallLevel]      = useState(0);
+  const [newsItems,         setNewsItems]         = useState([]);
+  const [eventLog,          setEventLog]          = useState([]);
+  const [selectedFlight,    setSelectedFlight]    = useState(null);
 
   const [layers, setLayers] = useState({
-    civilFlights: true,
+    civilFlights:    true,
     militaryFlights: true,
-    conflictZones: true,
-    flightLabels: false,
-    emergencyOnly: false,
+    conflictZones:   true,
+    flightLabels:    false,
+    emergencyOnly:   false,
   });
 
   const isMountedRef = useRef(true);
 
   const addLog = useCallback((category, msg) => {
-    setEventLog((prev) => [{ category, msg, time: nowStr() }, ...prev.slice(0, MAX_LOG - 1)]);
+    setEventLog(prev => [{ category, msg, time: nowStr() }, ...prev.slice(0, MAX_LOG - 1)]);
   }, []);
 
-  const handleLayerToggle = useCallback((id) => {
-    setLayers((prev) => ({ ...prev, [id]: !prev[id] }));
+  const handleLayerToggle = useCallback(id => {
+    setLayers(prev => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
   const fetchFlights = useCallback(async () => {
@@ -68,27 +68,28 @@ export default function Dashboard() {
       if (!isMountedRef.current) return;
 
       const states = (data.states || [])
-        .filter((s) => s[5] != null && s[6] != null)
+        .filter(s => s[5] != null && s[6] != null)
         .map(parseOpenSkyState);
 
-      const classified = states.map((f) => {
+      const classified = states.map(f => {
         const result = classifyFlight(f);
         f._threatLevel = result.level;
         f._threatScore = result.score;
-        f._tags = result.tags;
+        f._tags        = result.tags;
         return { raw: f, result };
       });
 
       const newThreats = classified
-        .filter((c) => c.result.level >= 2)
-        .flatMap((c) =>
-          c.result.alerts.map((a) => ({
+        .filter(c => c.result.level >= 2)
+        .flatMap(c =>
+          c.result.alerts.map(a => ({
             ...a,
-            id: `${c.raw.icao24}_${a.type}`,
+            id:       `${c.raw.icao24}_${a.type}`,
             callsign: c.raw.callsign,
-            country: c.raw.origin_country,
-            region: c.result.tags.find((t) =>
-              ['UKRAINE', 'GAZA', 'TAIWAN STRAIT', 'SOUTH CHINA SEA', 'IRAN', 'KOREAN PENINSULA', 'SYRIA', 'YEMEN', 'SUDAN', 'SAHEL'].includes(t)
+            country:  c.raw.origin_country,
+            region:   c.result.tags.find(t =>
+              ['UKRAINE','GAZA','TAIWAN STRAIT','SOUTH CHINA SEA',
+               'IRAN','KOREAN PENINSULA','SYRIA','YEMEN','SUDAN','SAHEL'].includes(t)
             ),
             time: nowStr(),
             tags: c.result.tags,
@@ -98,7 +99,7 @@ export default function Dashboard() {
       if (!isMountedRef.current) return;
       setFlights(states);
 
-      newThreats.filter((t) => t.type === 'SQUAWK').forEach((t) => {
+      newThreats.filter(t => t.type === 'SQUAWK').forEach(t => {
         addLog('EMERGENCY', `${t.callsign} — ${t.msg}`);
       });
 
@@ -115,16 +116,15 @@ export default function Dashboard() {
       const data = await res.json();
       if (!isMountedRef.current) return;
 
-      const ac = (data.ac || []).filter((a) => a.latitude != null && a.longitude != null);
+      const ac = (data.ac || []).filter(a => a.latitude != null && a.longitude != null);
       setMilitaryFlights(ac);
-
       if (ac.length > 0) addLog('MILITARY', `${ac.length} military aircraft tracked`);
 
       const resEmrg = await fetch('/api/adsb?type=squawks');
       if (resEmrg.ok) {
         const emrgData = await resEmrg.json();
         if (!isMountedRef.current) return;
-        (emrgData.ac || []).forEach((a) => {
+        (emrgData.ac || []).forEach(a => {
           addLog('EMERGENCY', `SQ7700: ${a.callsign || a.icao24} — ${a.origin_country || '?'}`);
         });
       }
@@ -134,7 +134,7 @@ export default function Dashboard() {
   }, [addLog]);
 
   const updateThreats = useCallback((classifiedFlights, classifiedNews, flightThreats) => {
-    const newsClassified = classifiedNews.map((n) => ({
+    const newsClassified = classifiedNews.map(n => ({
       raw: n,
       result: n.classification || classifyNewsItem(n),
     }));
@@ -144,25 +144,27 @@ export default function Dashboard() {
     if (!isMountedRef.current) return;
     setOverallLevel(ol);
     setConvergenceAlerts(ca);
-    ca.forEach((a) => addLog('CONVERGENCE', a.msg));
+    ca.forEach(a => addLog('CONVERGENCE', a.msg));
 
     const newsThreats = classifiedNews
-      .filter((n) => (n.classification?.level ?? 0) >= 2)
-      .map((n) => ({
-        type: 'NEWS', level: n.classification.level,
-        msg: n.title.slice(0, 80),
+      .filter(n => (n.classification?.level ?? 0) >= 2)
+      .map(n => ({
+        type:     'NEWS',
+        level:    n.classification.level,
+        msg:      n.title.slice(0, 80),
         callsign: `[${n.source?.toUpperCase()}]`,
-        time: nowStr(), tags: n.classification.tags,
-        id: `news_${n.title.slice(0, 20)}`,
+        time:     nowStr(),
+        tags:     n.classification.tags,
+        id:       `news_${n.title.slice(0, 20)}`,
       }));
 
     setThreats([...flightThreats, ...newsThreats].sort((a, b) => b.level - a.level).slice(0, 50));
   }, [addLog]);
 
-  const handleNewsClassified = useCallback((classified) => {
+  const handleNewsClassified = useCallback(classified => {
     if (!isMountedRef.current) return;
     setNewsItems(classified);
-    classified.filter((n) => n.classification.level >= 3).forEach((n) => {
+    classified.filter(n => n.classification.level >= 3).forEach(n => {
       addLog('NEWS', `${n.source?.toUpperCase()}: ${n.title.slice(0, 60)}`);
     });
   }, [addLog]);
@@ -173,7 +175,7 @@ export default function Dashboard() {
     fetchFlights();
     fetchMilitary();
     const flightIv = setInterval(fetchFlights, OPENSKY_POLL_MS);
-    const milIv = setInterval(fetchMilitary, MIL_POLL_MS);
+    const milIv    = setInterval(fetchMilitary, MIL_POLL_MS);
     return () => {
       isMountedRef.current = false;
       clearInterval(flightIv);
@@ -183,17 +185,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (newsItems.length === 0) return;
-    const cf = flights.map((f) => ({ raw: f, result: classifyFlight(f) }));
-    updateThreats(cf, newsItems, threats.filter((t) => t.type !== 'NEWS'));
+    const cf = flights.map(f => ({ raw: f, result: classifyFlight(f) }));
+    updateThreats(cf, newsItems, threats.filter(t => t.type !== 'NEWS'));
   }, [newsItems]); // eslint-disable-line
 
-  const emergencyCount = threats.filter((t) => t.level >= 4).length;
+  const emergencyCount = threats.filter(t => t.level >= 4).length;
 
   return (
     <div className="dashboard-root">
       <div className="scanlines" />
 
-      {/* ── STATUS BAR ── */}
+      {/* ── STATUS BAR ─────────────────────────────────────────────── */}
       <div className="statusbar">
         <StatusBar
           overallLevel={overallLevel}
@@ -205,47 +207,55 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* ── MAIN 3-COLUMN AREA ── */}
-      <div className={`main-area${globeFocus ? ' globe-focus' : ''}`}>
+      {/* ── MAIN AREA (left column + right column) ─────────────────── */}
+      <div className="main-area">
 
-        {/* LEFT PANEL */}
-        <div className="panel panel-left">
-          <LeftPanel
-            layers={layers}
-            onLayerToggle={handleLayerToggle}
-            threats={threats}
-            overallLevel={overallLevel}
-            flights={flights}
-            militaryFlights={militaryFlights}
-          />
+        {/* ── LEFT COLUMN: map area + live news bar ──────────────── */}
+        <div className="left-column">
+
+          {/* Map with layers overlay */}
+          <div className="map-area">
+
+            {/* Layers / situation overlay */}
+            <div className="layers-overlay">
+              <LeftPanel
+                layers={layers}
+                onLayerToggle={handleLayerToggle}
+                threats={threats}
+                overallLevel={overallLevel}
+                flights={flights}
+                militaryFlights={militaryFlights}
+              />
+            </div>
+
+            {/* 2D map */}
+            <Suspense fallback={<MapLoading />}>
+              <Map2D
+                flights={flights}
+                militaryFlights={militaryFlights}
+                threats={threats}
+                newsItems={newsItems}
+                layers={layers}
+                onFlightSelect={setSelectedFlight}
+              />
+            </Suspense>
+
+            {/* Flight detail overlay */}
+            {selectedFlight && (
+              <FlightOverlay
+                flight={selectedFlight}
+                onClose={() => setSelectedFlight(null)}
+              />
+            )}
+          </div>
+
+          {/* Live news bar */}
+          <div className="live-news-bar">
+            <LiveNewsPanel />
+          </div>
         </div>
 
-        {/* CENTER — Globe */}
-        <div className="panel panel-globe">
-          <Suspense fallback={<GlobeLoading />}>
-            <Globe
-              flights={flights}
-              militaryFlights={militaryFlights}
-              threats={threats}
-              newsItems={newsItems}
-              layers={layers}
-              onFlightSelect={setSelectedFlight}
-            />
-          </Suspense>
-
-          <button
-            onClick={() => setGlobeFocus((v) => !v)}
-            className="globe-toggle"
-          >
-            {globeFocus ? '⊡ NORMAL' : '⊞ EXPAND'}
-          </button>
-
-          {selectedFlight && (
-            <FlightOverlay flight={selectedFlight} onClose={() => setSelectedFlight(null)} />
-          )}
-        </div>
-
-        {/* RIGHT PANEL */}
+        {/* ── RIGHT COLUMN ────────────────────────────────────────── */}
         <RightPanel
           threats={threats}
           convergenceAlerts={convergenceAlerts}
@@ -255,7 +265,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* ── BOTTOM BAR ── */}
+      {/* ── BOTTOM BAR ─────────────────────────────────────────────── */}
       <div className="bottom-bar">
         <BottomBar
           threats={threats}
@@ -275,31 +285,33 @@ export default function Dashboard() {
   );
 }
 
-function GlobeLoading() {
+/* ── Loading fallback ───────────────────────────────────────────────────── */
+function MapLoading() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      height: '100%', background: '#c8dde8', gap: 12,
+      height: '100%', background: '#0d1117', gap: 12,
     }}>
-      <div style={{ fontFamily: '"VT323", monospace', fontSize: 32, color: '#334', animation: 'blink 1s step-end infinite' }}>
+      <div style={{ fontFamily: '"VT323", monospace', fontSize: 32, color: '#00cc33', animation: 'blink 1s step-end infinite' }}>
         ◎
       </div>
-      <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 12, color: '#556', letterSpacing: 3 }}>
-        INITIALIZING GLOBE...
+      <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 12, color: '#004400', letterSpacing: 3 }}>
+        INITIALIZING MAP...
       </div>
     </div>
   );
 }
 
+/* ── Flight detail overlay (appears over map) ───────────────────────────── */
 function FlightOverlay({ flight, onClose }) {
-  const sq = String(flight.squawk || '');
+  const sq     = String(flight.squawk || '');
   const sqInfo = EMERGENCY_SQUAWKS[sq];
 
   return (
     <div style={{
-      position: 'absolute', bottom: 48, left: 12, zIndex: 100,
+      position: 'absolute', bottom: 12, left: 'calc(var(--layers-w) + 12px)', zIndex: 100,
       background: '#050505ee', border: `1px solid ${sqInfo ? '#ff0000' : '#003300'}`,
-      padding: '10px 14px', maxWidth: 280,
+      padding: '10px 14px', maxWidth: 260,
       fontFamily: '"Share Tech Mono", monospace',
       boxShadow: sqInfo ? '0 0 20px rgba(255,0,0,0.3)' : '0 0 10px rgba(0,255,65,0.1)',
     }}>
@@ -310,14 +322,14 @@ function FlightOverlay({ flight, onClose }) {
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#004400', cursor: 'pointer', fontSize: 14 }}>✕</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px' }}>
-        <InfoRow label="ICAO" value={flight.icao24} />
+        <InfoRow label="ICAO"    value={flight.icao24} />
         <InfoRow label="COUNTRY" value={flight.origin_country} />
-        <InfoRow label="ALT" value={flight.geo_altitude != null ? `${Math.round(flight.geo_altitude)}m` : '—'} />
-        <InfoRow label="SPEED" value={flight.velocity != null ? `${Math.round(flight.velocity)}m/s` : '—'} />
-        <InfoRow label="HEADING" value={flight.true_track != null ? `${Math.round(flight.true_track)}°` : '—'} />
-        <InfoRow label="SQUAWK" value={sq || '—'} color={sqInfo?.color} />
-        <InfoRow label="LAT" value={flight.latitude?.toFixed(3)} />
-        <InfoRow label="LON" value={flight.longitude?.toFixed(3)} />
+        <InfoRow label="ALT"     value={flight.geo_altitude != null ? `${Math.round(flight.geo_altitude)}m` : '—'} />
+        <InfoRow label="SPEED"   value={flight.velocity   != null ? `${Math.round(flight.velocity)}m/s`    : '—'} />
+        <InfoRow label="HEADING" value={flight.true_track  != null ? `${Math.round(flight.true_track)}°`   : '—'} />
+        <InfoRow label="SQUAWK"  value={sq || '—'} color={sqInfo?.color} />
+        <InfoRow label="LAT"     value={flight.latitude?.toFixed(3)} />
+        <InfoRow label="LON"     value={flight.longitude?.toFixed(3)} />
       </div>
       {sqInfo && (
         <div style={{ marginTop: 6, padding: '4px 8px', background: 'rgba(255,0,0,0.15)', border: '1px solid #ff000055', color: '#ff4444', fontSize: 11, letterSpacing: 1 }}>
@@ -331,7 +343,7 @@ function FlightOverlay({ flight, onClose }) {
 function InfoRow({ label, value, color }) {
   return (
     <>
-      <span style={{ fontSize: 8, color: '#004400' }}>{label}:</span>
+      <span style={{ fontSize: 8,  color: '#004400' }}>{label}:</span>
       <span style={{ fontSize: 10, color: color || '#00cc33' }}>{value || '—'}</span>
     </>
   );
