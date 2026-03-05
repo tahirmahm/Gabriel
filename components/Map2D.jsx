@@ -20,19 +20,21 @@ function altColor(alt) {
   return '#e65100';
 }
 
-export default function Map2D({ flights, militaryFlights, threats, newsItems, layers, onFlightSelect }) {
+export default function Map2D({ flights, militaryFlights, threats, newsItems, layers, onFlightSelect, onZoneSelect }) {
   const containerRef = useRef(null);
   const mapState     = useRef({ map: null, civilLayer: null, milLayer: null, zonesLayer: null, ready: false });
 
   // Always-fresh refs so callbacks never go stale
-  const flightsRef  = useRef(flights);
-  const milRef      = useRef(militaryFlights);
-  const layersRef   = useRef(layers);
-  const selectRef   = useRef(onFlightSelect);
+  const flightsRef    = useRef(flights);
+  const milRef        = useRef(militaryFlights);
+  const layersRef     = useRef(layers);
+  const selectRef     = useRef(onFlightSelect);
+  const zoneSelectRef = useRef(onZoneSelect);
 
   useEffect(() => { flightsRef.current = flights;         renderFlights(); }, [flights]);         // eslint-disable-line
   useEffect(() => { milRef.current = militaryFlights;     renderFlights(); }, [militaryFlights]); // eslint-disable-line
-  useEffect(() => { selectRef.current = onFlightSelect; }, [onFlightSelect]);
+  useEffect(() => { selectRef.current     = onFlightSelect; }, [onFlightSelect]);
+  useEffect(() => { zoneSelectRef.current = onZoneSelect;   }, [onZoneSelect]);
 
   useEffect(() => {
     layersRef.current = layers;
@@ -167,7 +169,7 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
           radius: z.radius, color: z.color, fillColor: z.color,
           fillOpacity: 0.07, weight: 1.5, dashArray: '6,10',
         })
-        .bindPopup(`<span style="letter-spacing:1px">⚠ ${z.name.toUpperCase()}</span>`)
+        .on('click', () => zoneSelectRef.current && zoneSelectRef.current(z))
         .addTo(zonesLayer);
 
         L.marker([z.lat, z.lon], {

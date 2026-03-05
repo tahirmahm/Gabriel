@@ -14,6 +14,74 @@ import LiveNewsPanel from './LiveNewsPanel';
 
 const Map2D = lazy(() => import('./Map2D'));
 
+// ── Static conflict zone reference data ─────────────────────────────────────
+const ZONE_DETAILS = {
+  'Ukraine': {
+    since: 'Feb 24, 2022', location: 'Eastern & Southern Ukraine',
+    status: 'ACTIVE WAR',
+    belligerents: ['RUSSIA', 'UKRAINE', 'NATO'],
+    description: 'Full-scale Russian invasion. Active ground combat across Donetsk, Zaporizhzhia and Kherson oblasts. NATO supplying weapons, intelligence and air-defence systems.',
+    keywords: ['ukraine', 'kyiv', 'russia', 'zelensky', 'donbas', 'kharkiv', 'russian', 'nato', 'zaporizhzhia'],
+    color: '#ff3300',
+  },
+  'Gaza / Levant': {
+    since: 'Oct 7, 2023', location: 'Gaza Strip · Lebanon · West Bank',
+    status: 'ACTIVE CONFLICT',
+    belligerents: ['ISRAEL', 'IDF', 'HAMAS', 'HEZBOLLAH'],
+    description: 'Israeli military operations in Gaza following Hamas cross-border attack. Northern front with Hezbollah in Lebanon intermittently active. Largest displacement since 1948.',
+    keywords: ['israel', 'gaza', 'hamas', 'hezbollah', 'idf', 'beirut', 'west bank', 'netanyahu', 'rafah', 'lebanese'],
+    color: '#ff6600',
+  },
+  'Iran': {
+    since: 'Jan 2024', location: 'Iran · Gulf Region',
+    status: 'ACTIVE HOSTILITIES',
+    belligerents: ['IRAN', 'IRGC', 'USA', 'ISRAEL'],
+    description: 'US-Israeli air campaign targeting Iranian nuclear, missile and leadership infrastructure. Iran retaliating with ballistic missiles and drone swarms across the region. Major escalation ongoing.',
+    keywords: ['iran', 'irgc', 'tehran', 'khamenei', 'iranian', 'nuclear', 'persian gulf', 'strait of hormuz'],
+    color: '#ff3300',
+  },
+  'Yemen': {
+    since: 'Mar 2015', location: 'Yemen · Red Sea',
+    status: 'ACTIVE CONFLICT',
+    belligerents: ['HOUTHIS', 'ANSARALLAH', 'USA', 'UK', 'SAUDI ARABIA'],
+    description: 'Houthi forces attacking commercial shipping and warships in the Red Sea in solidarity with Gaza. US-UK conducting sustained airstrikes on Houthi positions. Major shipping rerouting via Cape of Good Hope.',
+    keywords: ['yemen', 'houthi', 'red sea', 'shipping', 'aden', 'sanaa', 'ansarallah'],
+    color: '#ff6600',
+  },
+  'Taiwan Strait': {
+    since: 'Ongoing', location: 'Taiwan Strait · Western Pacific',
+    status: 'ELEVATED TENSION',
+    belligerents: ['CHINA', 'PLA', 'TAIWAN', 'USA'],
+    description: 'PLA conducts regular air and naval incursions into Taiwan\'s ADIZ. US carrier strike groups maintain forward presence. Cross-strait tensions elevated following recent PLA exercises.',
+    keywords: ['taiwan', 'china', 'pla', 'strait', 'taipei', 'chinese military', 'adiz'],
+    color: '#ff9900',
+  },
+  'South China Sea': {
+    since: 'Ongoing', location: 'South China Sea',
+    status: 'ELEVATED TENSION',
+    belligerents: ['CHINA', 'PHILIPPINES', 'VIETNAM', 'USA'],
+    description: 'Disputed territorial waters. Frequent confrontations at Second Thomas Shoal between Chinese Coast Guard and Philippine resupply missions. US freedom-of-navigation operations ongoing.',
+    keywords: ['south china sea', 'philippines', 'vietnam', 'spratly', 'shoal', 'scarborough', 'philippine'],
+    color: '#ff9900',
+  },
+  'Sudan': {
+    since: 'Apr 2023', location: 'Sudan · Sahel',
+    status: 'ACTIVE WAR',
+    belligerents: ['SAF', 'RSF', 'DARFUR FACTIONS'],
+    description: 'Civil war between Sudanese Armed Forces and Rapid Support Forces. Widespread atrocities in Darfur. 8M+ displaced — largest displacement crisis globally. Famine conditions spreading.',
+    keywords: ['sudan', 'rsf', 'darfur', 'khartoum', 'sahel', 'mali', 'niger', 'sudanese'],
+    color: '#ff9900',
+  },
+  'Korean Peninsula': {
+    since: 'Ongoing', location: 'Korean Peninsula',
+    status: 'ELEVATED TENSION',
+    belligerents: ['DPRK', 'SOUTH KOREA', 'USA', 'RUSSIA'],
+    description: 'North Korea ballistic-missile testing programme active. DPRK troops deployed to Russia supporting Ukraine operations. US-South Korea joint exercises ongoing. Pyongyang rhetoric at elevated levels.',
+    keywords: ['korea', 'dprk', 'north korea', 'kim jong', 'pyongyang', 'icbm', 'nuclear test', 'korean'],
+    color: '#ff3300',
+  },
+};
+
 const OPENSKY_POLL_MS = 10000;
 const MIL_POLL_MS     = 30000;
 const MAX_LOG         = 120;
@@ -41,6 +109,7 @@ export default function Dashboard() {
   const [newsItems,         setNewsItems]         = useState([]);
   const [eventLog,          setEventLog]          = useState([]);
   const [selectedFlight,    setSelectedFlight]    = useState(null);
+  const [selectedZone,      setSelectedZone]      = useState(null);
 
   const [layers, setLayers] = useState({
     civilFlights:    true,
@@ -237,11 +306,22 @@ export default function Dashboard() {
                 newsItems={newsItems}
                 layers={layers}
                 onFlightSelect={setSelectedFlight}
+                onZoneSelect={z => { setSelectedZone(z); setSelectedFlight(null); }}
               />
             </Suspense>
 
+            {/* Conflict zone detail overlay */}
+            {selectedZone && (
+              <ZoneOverlay
+                zone={selectedZone}
+                newsItems={newsItems}
+                threats={threats}
+                onClose={() => setSelectedZone(null)}
+              />
+            )}
+
             {/* Flight detail overlay */}
-            {selectedFlight && (
+            {selectedFlight && !selectedZone && (
               <FlightOverlay
                 flight={selectedFlight}
                 onClose={() => setSelectedFlight(null)}
@@ -281,6 +361,156 @@ export default function Dashboard() {
           ☢ {emergencyCount} EMERGENCY SQUAWK{emergencyCount > 1 ? 'S' : ''} ACTIVE — CHECK THREAT PANEL ☢
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Conflict zone detail overlay ──────────────────────────────────────────── */
+function ZoneOverlay({ zone, newsItems, threats, onClose }) {
+  const info = ZONE_DETAILS[zone.name] || {};
+  const kw   = info.keywords || [];
+
+  // Related news: filter by zone keywords, sort by threat level
+  const related = newsItems
+    .filter(n => {
+      const txt = `${n.title} ${n.description || ''}`.toLowerCase();
+      return kw.some(k => txt.includes(k));
+    })
+    .sort((a, b) => (b.classification?.level ?? 0) - (a.classification?.level ?? 0))
+    .slice(0, 8);
+
+  // Zone threat level from matching threats + news
+  const zoneThreats = threats.filter(t =>
+    kw.some(k => `${t.msg} ${t.region || ''} ${(t.tags || []).join(' ')}`.toLowerCase().includes(k))
+  );
+  const maxNewsLevel = related.length ? Math.max(...related.map(n => n.classification?.level ?? 0)) : 0;
+  const score = zoneThreats.length * 2 + maxNewsLevel;
+  const levelLabel = score >= 8 ? 'CRITICAL' : score >= 5 ? 'HIGH' : score >= 2 ? 'ELEVATED' : 'MONITORED';
+  const levelColor = score >= 8 ? '#ff2222' : score >= 5 ? '#ff6600' : score >= 2 ? '#ffcc00' : '#00ff41';
+
+  const bColor = zone.color || '#ff6600';
+
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '50%', left: 'calc(var(--layers-w) + 16px)',
+      transform: 'translateY(-50%)',
+      zIndex: 60, width: 360,
+      maxHeight: 'calc(100% - 24px)',
+      display: 'flex', flexDirection: 'column',
+      background: '#050505f2',
+      border: `1px solid ${bColor}`,
+      fontFamily: '"Share Tech Mono", monospace',
+      boxShadow: `0 0 24px ${bColor}33, 0 0 6px #000`,
+      overflow: 'hidden',
+    }}>
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '8px 12px', background: bColor + '18',
+        borderBottom: `1px solid ${bColor}55`, flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#ff3333', animation: 'blink 1s step-end infinite', fontSize: 8 }}>●</span>
+          <span style={{ color: bColor, fontSize: 13, letterSpacing: 2, fontWeight: 'bold' }}>
+            {zone.name.toUpperCase()}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontSize: 8, padding: '2px 7px',
+            color: levelColor, border: `1px solid ${levelColor}`,
+            letterSpacing: 1,
+          }}>{levelLabel}</span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', color: '#446', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
+          >✕</button>
+        </div>
+      </div>
+
+      {/* ── Info grid ── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        gap: '6px 12px', padding: '10px 12px 6px',
+        borderBottom: `1px solid #001800`, flexShrink: 0,
+      }}>
+        {info.since && <ZoneField label="SINCE"    value={info.since} color={bColor} />}
+        {info.location && <ZoneField label="LOCATION" value={info.location} color={bColor} />}
+        {info.status && <ZoneField label="STATUS"   value={info.status} color={levelColor} />}
+        <ZoneField label="THREATS"  value={`${zoneThreats.length} active`} color={zoneThreats.length > 2 ? '#ff4444' : '#00cc33'} />
+      </div>
+
+      {/* ── Description ── */}
+      {info.description && (
+        <div style={{
+          padding: '8px 12px', fontSize: 9.5, color: '#667',
+          lineHeight: 1.55, borderBottom: '1px solid #001800', flexShrink: 0,
+        }}>
+          {info.description}
+        </div>
+      )}
+
+      {/* ── Belligerents ── */}
+      {info.belligerents?.length > 0 && (
+        <div style={{
+          padding: '6px 12px', display: 'flex', flexWrap: 'wrap', gap: 5,
+          borderBottom: '1px solid #001800', flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 7, color: '#334', letterSpacing: 1.5, alignSelf: 'center', marginRight: 4 }}>
+            BELLIGERENTS
+          </span>
+          {info.belligerents.map(b => (
+            <span key={b} style={{
+              fontSize: 8, padding: '2px 6px', letterSpacing: 0.5,
+              color: bColor, border: `1px solid ${bColor}44`,
+            }}>{b}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Related news ── */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ padding: '5px 12px 3px', fontSize: 7, color: '#334', letterSpacing: 2 }}>
+          INTELLIGENCE FEED — {related.length} ITEM{related.length !== 1 ? 'S' : ''}
+        </div>
+        {related.length === 0 ? (
+          <div style={{ padding: '8px 12px', fontSize: 9, color: '#334' }}>◌ NO MATCHING INTEL — MONITORING...</div>
+        ) : (
+          related.map((n, i) => {
+            const lvl = n.classification?.level ?? 0;
+            const badgeColor = lvl >= 4 ? '#ff2222' : lvl >= 3 ? '#ff6600' : lvl >= 2 ? '#ffcc00' : '#334';
+            const badge      = lvl >= 4 ? 'CRIT' : lvl >= 3 ? 'HIGH' : lvl >= 2 ? 'ELEV' : 'INFO';
+            return (
+              <div key={i} style={{
+                display: 'flex', gap: 6, padding: '5px 12px',
+                borderBottom: '1px solid #080808', alignItems: 'flex-start',
+              }}>
+                <span style={{
+                  fontSize: 7, padding: '1px 4px', flexShrink: 0, marginTop: 1,
+                  color: badgeColor, border: `1px solid ${badgeColor}55`,
+                }}>{badge}</span>
+                <div>
+                  <div style={{ fontSize: 9, color: '#889', lineHeight: 1.4 }}>{n.title}</div>
+                  <div style={{ fontSize: 7, color: '#334', marginTop: 2 }}>
+                    [{n.source?.toUpperCase()}]
+                    {n.pubDate ? ` · ${new Date(n.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ZoneField({ label, value, color }) {
+  return (
+    <div>
+      <div style={{ fontSize: 7, color: '#334', letterSpacing: 1.5, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 10, color: color || '#00cc33', letterSpacing: 0.5 }}>{value}</div>
     </div>
   );
 }
