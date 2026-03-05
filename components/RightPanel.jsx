@@ -3,12 +3,21 @@ import { useState } from 'react';
 import ThreatPanel from './ThreatPanel';
 import NewsPanel from './NewsPanel';
 
+// videoId → YouTube embed via youtube-nocookie.com
+// liveUrl → fallback "open on YouTube" link
 const CHANNELS = [
-  { id: 'aje',  short: 'AJE',    label: 'AL JAZEERA ENGLISH', color: '#e8b400', url: 'https://www.aljazeera.com/live/',      embed: true  },
-  { id: 'arb',  short: 'ARABIYA',label: 'AL ARABIYA ENGLISH', color: '#c8a000', url: 'https://english.alarabiya.net/live',  embed: true  },
-  { id: 'ary',  short: 'ARY',    label: 'ARY NEWS',           color: '#ff6600', url: 'https://arynews.tv/live',             embed: true  },
-  { id: 'bbc',  short: 'BBC',    label: 'BBC NEWS',           color: '#bb1919', url: 'https://www.bbc.co.uk/news',          embed: false },
-  { id: 'cnn',  short: 'CNN',    label: 'CNN',                color: '#cc0000', url: 'https://edition.cnn.com/live-tv',     embed: false },
+  { id: 'aje',  short: 'AJE',    label: 'AL JAZEERA ENGLISH', color: '#e8b400', videoId: 'gCNeDWCI0vo', liveUrl: 'https://www.youtube.com/live/gCNeDWCI0vo' },
+  { id: 'trt',  short: 'TRT',    label: 'TRT WORLD',          color: '#e84040', videoId: 'ABfFhWzWs0s', liveUrl: 'https://www.youtube.com/live/ABfFhWzWs0s' },
+  { id: 'cnn18',short: 'CNN18',  label: 'CNN NEWS 18',        color: '#cc0000', videoId: '_12EKnFPspY', liveUrl: 'https://www.youtube.com/live/_12EKnFPspY' },
+  { id: 'fox',  short: 'FOX',    label: 'FOX NEWS',           color: '#003f8a', videoId: '31IWLnU6Ca8', liveUrl: 'https://www.youtube.com/live/31IWLnU6Ca8' },
+  { id: 'f24',  short: 'F24',    label: 'FRANCE 24',          color: '#d40000', videoId: 'Ap-UM1O9RBU', liveUrl: 'https://www.youtube.com/live/Ap-UM1O9RBU' },
+  { id: 'sky',  short: 'SKY',    label: 'SKY NEWS',           color: '#e8130c', videoId: '9Auq9mYxFEE', liveUrl: 'https://www.youtube.com/@SkyNews/live'    },
+  { id: 'bbc',  short: 'BBC',    label: 'BBC NEWS',           color: '#bb1919', videoId: 'w_Ma8oQLmSM', liveUrl: 'https://www.youtube.com/@BBCNews/live'    },
+  { id: 'dw',   short: 'DW',     label: 'DW NEWS',            color: '#006ab3', videoId: 'TG5RIgp_LZE', liveUrl: 'https://www.youtube.com/@dwnews/live'     },
+  { id: 'abc',  short: 'ABC',    label: 'ABC NEWS',           color: '#ffcd00', videoId: 'vOTiJkg1voo', liveUrl: 'https://www.youtube.com/@ABCNews/live'    },
+  { id: 'ary',  short: 'ARY',    label: 'ARY NEWS',           color: '#ff6600', videoId: null,          liveUrl: 'https://www.youtube.com/@ARYNewsPK/live'  },
+  { id: 'ndtv', short: 'NDTV',   label: 'NDTV 24x7',          color: '#e00000', videoId: null,          liveUrl: 'https://www.youtube.com/@ndtv/live'       },
+  { id: 'arb',  short: 'ARABIYA',label: 'AL ARABIYA ENGLISH', color: '#c8a000', videoId: null,          liveUrl: 'https://www.youtube.com/@AlArabiyaEnglish/live' },
 ];
 
 export default function RightPanel({ threats, convergenceAlerts, overallLevel, eventLog, onNewsClassified }) {
@@ -65,13 +74,13 @@ export default function RightPanel({ threats, convergenceAlerts, overallLevel, e
             <span style={{ color: ch?.color, letterSpacing: 0.5 }}>{ch?.label}</span>
           </div>
 
-          {ch?.embed ? (
+          {ch?.videoId ? (
             <iframe
               key={ch.id}
-              src={ch.url}
+              src={`https://www.youtube-nocookie.com/embed/${ch.videoId}?autoplay=1&mute=0&rel=0&modestbranding=1`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-              allow="autoplay; fullscreen"
-              referrerPolicy="no-referrer"
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+              allowFullScreen
             />
           ) : (
             <div style={{
@@ -87,12 +96,12 @@ export default function RightPanel({ threats, convergenceAlerts, overallLevel, e
               </div>
               <div style={{ textAlign: 'center', fontFamily: '"Share Tech Mono", monospace' }}>
                 <div style={{ color: ch?.color, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 3 }}>{ch?.label}</div>
-                <div style={{ color: '#333', fontSize: 8, marginBottom: 10 }}>DIRECT EMBED NOT PERMITTED BY CHANNEL</div>
-                <a href={ch?.url} target="_blank" rel="noreferrer" style={{
+                <div style={{ color: '#333', fontSize: 8, marginBottom: 10 }}>WATCH LIVE ON YOUTUBE</div>
+                <a href={ch?.liveUrl} target="_blank" rel="noreferrer" style={{
                   fontSize: 9, color: ch?.color, fontFamily: '"Share Tech Mono", monospace',
                   textDecoration: 'none', border: `1px solid ${ch?.color}55`, padding: '3px 12px',
                 }}>
-                  ↗ WATCH LIVE ON {ch?.short}
+                  ↗ OPEN ON YOUTUBE
                 </a>
               </div>
             </div>
