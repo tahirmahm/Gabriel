@@ -6,16 +6,14 @@ import {
   convergenceScore,
   EMERGENCY_SQUAWKS,
 } from '../lib/threatClassifier';
-import FlightPanel from './FlightPanel';
-import ThreatPanel from './ThreatPanel';
-import NewsPanel from './NewsPanel';
 import StatusBar from './StatusBar';
-import FloatingWindow from './FloatingWindow';
-import LiveTVWindow from './LiveTVWindow';
+import LeftPanel from './LeftPanel';
+import RightPanel from './RightPanel';
+import BottomBar from './BottomBar';
 
 const Globe = lazy(() => import('./Globe'));
 
-const OPENSKY_POLL_MS = 15000;
+const OPENSKY_POLL_MS = 10000;
 const MIL_POLL_MS = 30000;
 const MAX_LOG = 120;
 
@@ -42,16 +40,24 @@ export default function Dashboard() {
   const [newsItems, setNewsItems] = useState([]);
   const [eventLog, setEventLog] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(null);
-  const [layout, setLayout] = useState('default');
+  const [globeFocus, setGlobeFocus] = useState(false);
 
-  // Floating window visibility
-  const [showRSS, setShowRSS] = useState(true);
-  const [showTV, setShowTV] = useState(true);
+  const [layers, setLayers] = useState({
+    civilFlights: true,
+    militaryFlights: true,
+    conflictZones: true,
+    flightLabels: false,
+    emergencyOnly: false,
+  });
 
   const isMountedRef = useRef(true);
 
   const addLog = useCallback((category, msg) => {
     setEventLog((prev) => [{ category, msg, time: nowStr() }, ...prev.slice(0, MAX_LOG - 1)]);
+  }, []);
+
+  const handleLayerToggle = useCallback((id) => {
+    setLayers((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
   const fetchFlights = useCallback(async () => {
@@ -187,7 +193,7 @@ export default function Dashboard() {
     <div className="dashboard-root">
       <div className="scanlines" />
 
-      {/* Status bar */}
+      {/* ── STATUS BAR ── */}
       <div className="statusbar">
         <StatusBar
           overallLevel={overallLevel}
@@ -197,90 +203,68 @@ export default function Dashboard() {
           newsCount={newsItems.length}
           lastUpdate={null}
         />
-        {/* Window toggle buttons */}
-        <div style={{
-          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-          display: 'flex', gap: 6,
-        }}>
-          <WinToggle active={showRSS} onClick={() => setShowRSS((v) => !v)} label="◈ RSS" color="#00ff41" />
-          <WinToggle active={showTV} onClick={() => setShowTV((v) => !v)} label="▶ TV" color="#00b4d8" />
-        </div>
       </div>
 
-      {/* Main 2-column grid: threat panel | globe */}
-      <div className={`main-grid ${layout === 'globe-focus' ? 'globe-focus' : ''}`}>
-        {/* LEFT — Threat panel */}
+      {/* ── MAIN 3-COLUMN AREA ── */}
+      <div className={`main-area${globeFocus ? ' globe-focus' : ''}`}>
+
+        {/* LEFT PANEL */}
         <div className="panel panel-left">
-          <ThreatPanel
+          <LeftPanel
+            layers={layers}
+            onLayerToggle={handleLayerToggle}
             threats={threats}
-            convergenceAlerts={convergenceAlerts}
             overallLevel={overallLevel}
-            eventLog={eventLog}
+            flights={flights}
+            militaryFlights={militaryFlights}
           />
         </div>
 
-        {/* CENTER — Globe (full remaining width) */}
-        <div className="panel panel-globe" style={{ gridColumn: '2 / -1' }}>
-          <div style={{ position: 'absolute', inset: 0 }}>
-            <Suspense fallback={<GlobeLoading />}>
-              <Globe
-                flights={flights}
-                militaryFlights={militaryFlights}
-                threats={threats}
-                newsItems={newsItems}
-                onFlightSelect={setSelectedFlight}
-              />
-            </Suspense>
-          </div>
+        {/* CENTER — Globe */}
+        <div className="panel panel-globe">
+          <Suspense fallback={<GlobeLoading />}>
+            <Globe
+              flights={flights}
+              militaryFlights={militaryFlights}
+              threats={threats}
+              newsItems={newsItems}
+              layers={layers}
+              onFlightSelect={setSelectedFlight}
+            />
+          </Suspense>
 
           <button
-            onClick={() => setLayout((l) => l === 'default' ? 'globe-focus' : 'default')}
+            onClick={() => setGlobeFocus((v) => !v)}
             className="globe-toggle"
           >
-            {layout === 'globe-focus' ? '⊡ NORMAL' : '⊞ EXPAND'}
+            {globeFocus ? '⊡ NORMAL' : '⊞ EXPAND'}
           </button>
 
           {selectedFlight && (
             <FlightOverlay flight={selectedFlight} onClose={() => setSelectedFlight(null)} />
           )}
         </div>
+
+        {/* RIGHT PANEL */}
+        <RightPanel
+          threats={threats}
+          convergenceAlerts={convergenceAlerts}
+          overallLevel={overallLevel}
+          eventLog={eventLog}
+          onNewsClassified={handleNewsClassified}
+        />
       </div>
 
-      {/* Bottom — Flight table */}
-      <div className="panel panel-bottom">
-        <FlightPanel
+      {/* ── BOTTOM BAR ── */}
+      <div className="bottom-bar">
+        <BottomBar
+          threats={threats}
+          newsItems={newsItems}
+          overallLevel={overallLevel}
           flights={flights}
           militaryFlights={militaryFlights}
-          selectedFlight={selectedFlight}
-          onFlightSelect={setSelectedFlight}
         />
       </div>
-
-      {/* ── Floating Windows ── */}
-
-      {/* RSS Feed — always mounted (keeps fetching even when hidden) */}
-      <div style={{ display: showRSS ? 'block' : 'none' }}>
-        <FloatingWindow
-          title="◈ RSS INTEL FEED"
-          defaultX={typeof window !== 'undefined' ? window.innerWidth - 385 : 1100}
-          defaultY={70}
-          width={370}
-          height={520}
-          onClose={() => setShowRSS(false)}
-          zIndex={500}
-        >
-          <NewsPanel onNewsClassified={handleNewsClassified} />
-        </FloatingWindow>
-      </div>
-
-      {/* Live TV */}
-      {showTV && (
-        <LiveTVWindow
-          defaultX={typeof window !== 'undefined' ? window.innerWidth - 485 : 900}
-          defaultY={typeof window !== 'undefined' ? window.innerHeight - 440 : 400}
-          onClose={() => setShowTV(false)}
-        />
-      )}
 
       {emergencyCount > 0 && (
         <div className="emergency-banner">
@@ -288,23 +272,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
-  );
-}
-
-function WinToggle({ active, onClick, label, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: active ? color + '18' : 'transparent',
-        border: `1px solid ${active ? color : '#222'}`,
-        color: active ? color : '#333',
-        fontFamily: '"Share Tech Mono", monospace', fontSize: 9,
-        cursor: 'pointer', padding: '3px 8px', letterSpacing: 1,
-      }}
-    >
-      {label}
-    </button>
   );
 }
 

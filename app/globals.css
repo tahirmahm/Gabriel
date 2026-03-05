@@ -13,13 +13,14 @@
   --red-soft: #ff4400;
   --yellow: #ffff00;
   --bg: #050505;
-  --bg-panel: #080808;
-  --bg-panel2: #0a0a0a;
-  --border: #001a00;
-  --border-bright: #003300;
-  --status-h: 46px;
-  --bottom-h: 200px;
-  --left-w: 270px;
+  --bg-panel: #070709;
+  --bg-panel2: #0a0a0c;
+  --border: #001800;
+  --border-bright: #002800;
+  --status-h: 44px;
+  --left-w: 220px;
+  --right-w: 400px;
+  --bottom-h: 220px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,13 +34,12 @@ html, body {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
 }
 
-/* scrollbars */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 1px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--green-mid); }
 
-/* ─── Layout ──────────────────────────────────────────────────────────────── */
+/* ─── Root layout ─────────────────────────────────────────────────────────── */
 
 .dashboard-root {
   display: flex;
@@ -51,39 +51,50 @@ html, body {
   overflow: hidden;
 }
 
+/* Status bar */
 .statusbar {
   height: var(--status-h);
   min-height: var(--status-h);
-  background: #030303;
+  background: #020202;
   border-bottom: 1px solid var(--border-bright);
   flex-shrink: 0;
   position: relative;
   z-index: 50;
+  display: flex;
+  align-items: center;
 }
 
-.main-grid {
+/* ─── Main 3-column area ──────────────────────────────────────────────────── */
+
+.main-area {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--left-w) 1fr;
-  grid-template-rows: 1fr;
+  grid-template-columns: var(--left-w) 1fr var(--right-w);
   overflow: hidden;
   min-height: 0;
 }
 
-.main-grid.globe-focus {
-  grid-template-columns: 0 1fr;
+.main-area.globe-focus {
+  grid-template-columns: 0 1fr 0;
 }
-.main-grid.globe-focus .panel-left {
+.main-area.globe-focus .panel-left,
+.main-area.globe-focus .panel-right {
   display: none;
 }
 
-.panel-bottom {
+/* ─── Bottom bar (4 columns) ──────────────────────────────────────────────── */
+
+.bottom-bar {
   height: var(--bottom-h);
   min-height: var(--bottom-h);
+  display: grid;
+  grid-template-columns: 210px 1fr 190px 1fr;
   border-top: 1px solid var(--border-bright);
   flex-shrink: 0;
   overflow: hidden;
 }
+
+/* ─── Panel base ──────────────────────────────────────────────────────────── */
 
 .panel {
   background: var(--bg-panel);
@@ -93,6 +104,8 @@ html, body {
 
 .panel-left {
   border-right: 1px solid var(--border-bright);
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-globe {
@@ -100,30 +113,89 @@ html, body {
   overflow: hidden;
 }
 
+/* ─── Right panel split ───────────────────────────────────────────────────── */
 
-/* ─── Globe toggle button ─────────────────────────────────────────────────── */
+.panel-right {
+  border-left: 1px solid var(--border-bright);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-top {
+  flex: 0 0 42%;
+  border-bottom: 1px solid var(--border-bright);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-bottom {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.right-bottom-left {
+  border-right: 1px solid var(--border-bright);
+  overflow: hidden;
+}
+
+.right-bottom-right {
+  overflow: hidden;
+}
+
+/* ─── Bottom bar cells ────────────────────────────────────────────────────── */
+
+.bottom-cell {
+  border-right: 1px solid var(--border-bright);
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-panel);
+}
+.bottom-cell:last-child { border-right: none; }
+
+/* ─── Shared panel header ─────────────────────────────────────────────────── */
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: #020202;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--green);
+}
+
+/* ─── Globe toggle / expand button ───────────────────────────────────────── */
 
 .globe-toggle {
   position: absolute;
   top: 8px;
   right: 10px;
   z-index: 10;
-  background: rgba(0,0,0,0.7);
-  border: 1px solid var(--border-bright);
-  color: var(--green-dim);
+  background: rgba(0,0,0,0.75);
+  border: 1px solid #002800;
+  color: #004400;
   padding: 3px 8px;
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   cursor: pointer;
   letter-spacing: 1px;
-  transition: all 0.15s;
+  transition: all 0.12s;
 }
 .globe-toggle:hover {
   border-color: var(--green);
   color: var(--green);
 }
 
-/* ─── Scan lines ──────────────────────────────────────────────────────────── */
+/* ─── Scanlines overlay ───────────────────────────────────────────────────── */
 
 .scanlines {
   pointer-events: none;
@@ -131,11 +203,8 @@ html, body {
   inset: 0;
   z-index: 9999;
   background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.07) 2px,
-    rgba(0, 0, 0, 0.07) 4px
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
   );
 }
 
@@ -143,48 +212,24 @@ html, body {
 
 .emergency-banner {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   z-index: 1000;
-  background: rgba(255, 0, 0, 0.15);
+  background: rgba(255,0,0,0.12);
   border-top: 2px solid #ff0000;
   color: #ff0000;
   text-align: center;
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 3px;
-  padding: 4px;
+  padding: 3px;
   animation: blink 0.8s step-end infinite;
 }
 
 /* ─── Animations ──────────────────────────────────────────────────────────── */
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-@keyframes ticker {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-200%); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 4px var(--green); }
-  50% { box-shadow: 0 0 12px var(--green), 0 0 24px var(--green); }
-}
-
-@keyframes scanin {
-  0% { opacity: 0; transform: translateY(-4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-/* ─── Utility ─────────────────────────────────────────────────────────────── */
-
-.glow-green { text-shadow: 0 0 8px var(--green); }
-.glow-red { text-shadow: 0 0 8px var(--red); }
-.glow-amber { text-shadow: 0 0 8px var(--amber); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-200%); } }
+@keyframes scanin { 0% { opacity: 0; transform: translateY(-4px); } 100% { opacity: 1; transform: translateY(0); } }
 
 /* ─── Cesium overrides ────────────────────────────────────────────────────── */
 
@@ -195,17 +240,15 @@ html, body {
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 
-@media (max-width: 1200px) {
-  :root {
-    --left-w: 230px;
-  }
+@media (max-width: 1400px) {
+  :root { --right-w: 340px; }
 }
-
+@media (max-width: 1200px) {
+  :root { --left-w: 190px; --right-w: 300px; }
+}
 @media (max-width: 900px) {
-  .main-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-  }
-  .panel-left { display: none; }
+  .main-area { grid-template-columns: 1fr; }
+  .panel-left, .panel-right { display: none; }
   :root { --bottom-h: 160px; }
+  .bottom-bar { grid-template-columns: 1fr 1fr; }
 }
