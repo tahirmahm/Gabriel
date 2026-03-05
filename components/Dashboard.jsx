@@ -112,7 +112,7 @@ export default function Dashboard() {
   const [selectedZone,      setSelectedZone]      = useState(null);
 
   const [layers, setLayers] = useState({
-    civilFlights:    true,
+    civilFlights:    false,
     militaryFlights: true,
     conflictZones:   true,
     flightLabels:    false,
@@ -240,21 +240,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    addLog('SYSTEM', 'SENTINEL OSINT initialized — monitoring all frequencies');
-    fetchFlights();
+    addLog('SYSTEM', 'SENTINEL OSINT initialized — military tracking active');
     fetchMilitary();
-    const flightIv = setInterval(fetchFlights, OPENSKY_POLL_MS);
-    const milIv    = setInterval(fetchMilitary, MIL_POLL_MS);
+    const milIv = setInterval(fetchMilitary, MIL_POLL_MS);
     return () => {
       isMountedRef.current = false;
-      clearInterval(flightIv);
       clearInterval(milIv);
     };
   }, []); // eslint-disable-line
 
   useEffect(() => {
     if (newsItems.length === 0) return;
-    const cf = flights.map(f => ({ raw: f, result: classifyFlight(f) }));
+    // Only military + emergency flights feed into threat convergence
+    const cf = militaryFlights.map(f => ({ raw: f, result: classifyFlight(f) }));
     updateThreats(cf, newsItems, threats.filter(t => t.type !== 'NEWS'));
   }, [newsItems]); // eslint-disable-line
 
@@ -268,7 +266,7 @@ export default function Dashboard() {
       <div className="statusbar">
         <StatusBar
           overallLevel={overallLevel}
-          flightCount={flights.length}
+          flightCount={0}
           militaryCount={militaryFlights.length}
           threatCount={threats.length}
           newsCount={newsItems.length}
@@ -292,7 +290,7 @@ export default function Dashboard() {
                 onLayerToggle={handleLayerToggle}
                 threats={threats}
                 overallLevel={overallLevel}
-                flights={flights}
+                flights={[]}
                 militaryFlights={militaryFlights}
               />
             </div>
@@ -300,7 +298,7 @@ export default function Dashboard() {
             {/* 2D map */}
             <Suspense fallback={<MapLoading />}>
               <Map2D
-                flights={flights}
+                flights={[]}
                 militaryFlights={militaryFlights}
                 threats={threats}
                 newsItems={newsItems}
@@ -351,7 +349,7 @@ export default function Dashboard() {
           threats={threats}
           newsItems={newsItems}
           overallLevel={overallLevel}
-          flights={flights}
+          flights={[]}
           militaryFlights={militaryFlights}
         />
       </div>
