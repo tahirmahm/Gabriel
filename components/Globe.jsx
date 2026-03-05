@@ -6,28 +6,97 @@ const CESIUM_VERSION = '1.114';
 const CESIUM_CDN = `https://cesium.com/downloads/cesiumjs/releases/${CESIUM_VERSION}/Build/Cesium`;
 
 const HOTSPOTS = [
-  { name: 'Ukraine', lat: 49.0, lon: 31.0, r: 800000, desc: 'Active conflict — Russian full-scale invasion since Feb 2022. Ongoing frontline combat across eastern and southern regions.' },
-  { name: 'Gaza', lat: 31.5, lon: 34.5, r: 80000, desc: 'Active conflict — Israel-Hamas war. Heavy urban combat, humanitarian crisis, regional escalation risk.' },
-  { name: 'Taiwan Strait', lat: 24.0, lon: 120.0, r: 400000, desc: 'High tension — PRC military exercises and incursions into ADIZ. Risk of blockade or invasion scenario.' },
-  { name: 'South China Sea', lat: 12.0, lon: 114.0, r: 900000, desc: 'Disputed waters — China vs Philippines, Vietnam, Malaysia. Regular naval confrontations at Spratly Islands.' },
-  { name: 'Iran', lat: 32.0, lon: 53.0, r: 700000, desc: 'Regional destabiliser — nuclear programme escalation, proxy networks active across Middle East, direct exchange with Israel.' },
-  { name: 'Yemen', lat: 15.5, lon: 48.0, r: 500000, desc: 'Active conflict — Houthi attacks on Red Sea shipping, US/UK airstrikes. Civil war ongoing since 2015.' },
-  { name: 'Sudan', lat: 15.0, lon: 30.0, r: 600000, desc: 'Civil war — RSF vs SAF since April 2023. Mass atrocities, one of world\'s worst humanitarian crises.' },
-  { name: 'Korea', lat: 38.0, lon: 127.5, r: 300000, desc: 'Flashpoint — DPRK ballistic missile tests, military cooperation with Russia. DMZ incidents ongoing.' },
+  {
+    name: 'Ukraine', lat: 49.0, lon: 31.0, r: 800000,
+    desc: 'Russian full-scale invasion since Feb 2022. Active frontline combat across eastern and southern regions.',
+    keywords: ['ukraine', 'kyiv', 'russia', 'russian', 'zelensky', 'putin', 'kharkiv', 'kherson', 'zaporizhzhia', 'donbas', 'mariupol', 'bakhmut', 'crimea'],
+    location: 'Eastern Europe',
+  },
+  {
+    name: 'Gaza', lat: 31.5, lon: 34.5, r: 80000,
+    desc: 'Israel-Hamas war. Heavy urban combat, humanitarian crisis, regional escalation risk.',
+    keywords: ['gaza', 'hamas', 'israel', 'netanyahu', 'palestin', 'rafah', 'idf', 'west bank', 'hezbollah', 'tel aviv', 'beirut'],
+    location: 'Middle East',
+  },
+  {
+    name: 'Taiwan Strait', lat: 24.0, lon: 120.0, r: 400000,
+    desc: 'PRC military exercises and ADIZ incursions ongoing. Risk of blockade or invasion scenario.',
+    keywords: ['taiwan', 'taipei', 'china', 'prc', 'pla', 'strait', 'xi jinping', 'adiz'],
+    location: 'Indo-Pacific',
+  },
+  {
+    name: 'South China Sea', lat: 12.0, lon: 114.0, r: 900000,
+    desc: 'Disputed waters — China vs Philippines, Vietnam, Malaysia. Naval confrontations at Spratly Islands.',
+    keywords: ['south china sea', 'spratly', 'philippines', 'scarborough', 'paracel', 'nine-dash'],
+    location: 'Indo-Pacific',
+  },
+  {
+    name: 'Iran', lat: 32.0, lon: 53.0, r: 700000,
+    desc: 'Nuclear programme escalation, proxy networks active across Middle East. Direct exchange with Israel.',
+    keywords: ['iran', 'tehran', 'khamenei', 'irgc', 'persian', 'nuclear', 'sanctions', 'rouhani', 'raisi'],
+    location: 'Middle East',
+  },
+  {
+    name: 'Yemen', lat: 15.5, lon: 48.0, r: 500000,
+    desc: 'Houthi attacks on Red Sea shipping, US/UK airstrikes. Civil war ongoing since 2015.',
+    keywords: ['yemen', 'houthi', 'sanaa', 'red sea', 'aden', 'shipping', 'tanker'],
+    location: 'Arabian Peninsula',
+  },
+  {
+    name: 'Sudan', lat: 15.0, lon: 30.0, r: 600000,
+    desc: 'Civil war — RSF vs SAF since April 2023. Mass atrocities, one of world\'s worst humanitarian crises.',
+    keywords: ['sudan', 'rsf', 'khartoum', 'darfur', 'saf', 'hemeti'],
+    location: 'East Africa',
+  },
+  {
+    name: 'Korea', lat: 38.0, lon: 127.5, r: 300000,
+    desc: 'DPRK ballistic missile tests, military cooperation with Russia. DMZ incidents ongoing.',
+    keywords: ['korea', 'dprk', 'pyongyang', 'kim jong', 'missile', 'north korea'],
+    location: 'East Asia',
+  },
 ];
 
-export default function Globe({ flights = [], militaryFlights = [], threats = [], onFlightSelect }) {
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (isNaN(diff)) return '';
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function getNewsForHotspot(newsItems, hotspot) {
+  if (!newsItems?.length) return [];
+  const kws = hotspot.keywords;
+  return newsItems.filter((item) => {
+    const text = `${item.title || ''} ${item.description || ''}`.toLowerCase();
+    return kws.some((kw) => text.includes(kw));
+  }).sort((a, b) => (b.classification?.level ?? 0) - (a.classification?.level ?? 0));
+}
+
+function threatBadge(level) {
+  if (level >= 4) return { label: 'CRITICAL', bg: '#3a0000', color: '#ff3333', border: '#ff3333' };
+  if (level >= 3) return { label: 'HIGH', bg: '#2a1400', color: '#ff6600', border: '#ff6600' };
+  if (level >= 2) return { label: 'ELEVATED', bg: '#1a1a00', color: '#ffcc00', border: '#ffcc00' };
+  return { label: 'LOW', bg: '#001a00', color: '#00cc44', border: '#00cc44' };
+}
+
+export default function Globe({ flights = [], militaryFlights = [], threats = [], newsItems = [], onFlightSelect }) {
   const containerRef = useRef(null);
   const viewerRef = useRef(null);
   const entitiesRef = useRef(new Map());
   const initRef = useRef(false);
   const flightsRef = useRef({ flights: [], militaryFlights: [] });
+  const newsItemsRef = useRef([]);
   const showFlightsRef = useRef(true);
   const [showFlights, setShowFlights] = useState(true);
   const [popup, setPopup] = useState(null);
 
-  // Keep refs current
   useEffect(() => { flightsRef.current = { flights, militaryFlights }; }, [flights, militaryFlights]);
+  useEffect(() => { newsItemsRef.current = newsItems; }, [newsItems]);
   useEffect(() => { showFlightsRef.current = showFlights; }, [showFlights]);
 
   const getFlightColor = useCallback((flight, Cesium) => {
@@ -106,7 +175,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
     }
   }, [getFlightColor]);
 
-  // Init Cesium
   useEffect(() => {
     if (initRef.current || !containerRef.current) return;
 
@@ -133,9 +201,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
 
       const Cesium = window.Cesium;
 
-      // Suppress Ion errors — we're not using Ion
-      try { Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.invalid'; } catch {}
-
       const viewer = new Cesium.Viewer(containerRef.current, {
         timeline: false,
         animation: false,
@@ -151,7 +216,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         terrainProvider: new Cesium.EllipsoidTerrainProvider(),
       });
 
-      // Solid dark background, no atmospheric glow
       viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#050508');
       viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0d0d14');
       viewer.scene.globe.enableLighting = false;
@@ -160,7 +224,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
       viewer.scene.fog.enabled = false;
       viewer.scene.skyBox.show = true;
 
-      // CARTO Dark Matter — free tiles, no API key, fully opaque dark map
       viewer.imageryLayers.removeAll();
       viewer.imageryLayers.addImageryProvider(
         new Cesium.UrlTemplateImageryProvider({
@@ -171,7 +234,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         })
       );
 
-      // Hotspot threat zones
       for (const hs of HOTSPOTS) {
         const entity = viewer.entities.add({
           name: hs.name,
@@ -205,7 +267,6 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
       });
 
-      // Click — handle flights AND hotspots
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
       handler.setInputAction((click) => {
         const picked = viewer.scene.pick(click.position);
@@ -214,15 +275,19 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
           setPopup(null);
         } else if (picked?.id?._hotspotData) {
           const hs = picked.id._hotspotData;
-          setPopup({ name: hs.name, desc: hs.desc, x: click.position.x, y: click.position.y });
+          const related = getNewsForHotspot(newsItemsRef.current, hs);
+          setPopup({
+            hotspot: hs,
+            related,
+            x: click.position.x,
+            y: click.position.y,
+          });
         } else {
           setPopup(null);
         }
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
       viewerRef.current = viewer;
-
-      // Render any flights that already arrived before Cesium finished loading
       doUpdateFlights(Cesium, viewer);
     };
 
@@ -237,51 +302,122 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
     };
   }, []); // eslint-disable-line
 
-  // Update flights when props change
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed() || !window.Cesium) return;
     doUpdateFlights(window.Cesium, viewer);
   }, [flights, militaryFlights, doUpdateFlights]);
 
-  // Toggle flight visibility
   useEffect(() => {
     for (const [, entity] of entitiesRef.current) {
       entity.show = showFlights;
     }
   }, [showFlights]);
 
+  // Refresh popup news when newsItems update and popup is open
+  useEffect(() => {
+    if (!popup?.hotspot) return;
+    const related = getNewsForHotspot(newsItems, popup.hotspot);
+    setPopup((prev) => prev ? { ...prev, related } : null);
+  }, [newsItems]); // eslint-disable-line
+
+  const topItem = popup?.related?.[0];
+  const restItems = popup?.related?.slice(1, 6) ?? [];
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#050508' }} />
 
-      {/* Conflict zone popup */}
-      {popup && (
+      {/* ── Conflict zone news popup ── */}
+      {popup?.hotspot && (
         <div style={{
           position: 'absolute',
-          left: Math.min(popup.x + 12, window.innerWidth - 300),
-          top: Math.min(popup.y + 12, window.innerHeight - 120),
-          background: '#0a0a0c',
-          border: '1px solid #ff3300',
-          padding: '10px 14px',
+          left: Math.min(popup.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1400) - 320),
+          top: Math.max(8, Math.min(popup.y, (typeof window !== 'undefined' ? window.innerHeight : 800) - 420)),
+          width: 300,
+          background: '#0c0c0e',
+          border: '1px solid #550000',
           fontFamily: '"Share Tech Mono", monospace',
           zIndex: 20,
-          width: 270,
-          boxShadow: '0 0 20px rgba(255,50,0,0.25)',
+          boxShadow: '0 0 30px rgba(180,0,0,0.3)',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
-          <div style={{ color: '#ff4444', fontSize: 12, fontWeight: 'bold', marginBottom: 5, letterSpacing: 1 }}>
-            ⚠ {popup.name.toUpperCase()}
+          {/* Header */}
+          <div style={{ background: '#110000', padding: '8px 12px', borderBottom: '1px solid #330000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: '#ff3333', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 }}>
+              ⚠ {popup.hotspot.name.toUpperCase()} — CONFLICT ZONE
+            </div>
+            <button onClick={() => setPopup(null)} style={{ background: 'none', border: 'none', color: '#553333', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>✕</button>
           </div>
-          <div style={{ color: '#888', fontSize: 10, lineHeight: 1.5, marginBottom: 8 }}>{popup.desc}</div>
-          <button onClick={() => setPopup(null)} style={{
-            background: 'none', border: '1px solid #333', color: '#555',
-            fontFamily: '"Share Tech Mono", monospace', fontSize: 9,
-            cursor: 'pointer', padding: '2px 8px', letterSpacing: 1,
-          }}>✕ CLOSE</button>
+
+          <div style={{ padding: '10px 12px', overflowY: 'auto', maxHeight: 420 }}>
+            {/* Zone description */}
+            <div style={{ fontSize: 9, color: '#664444', marginBottom: 10, lineHeight: 1.5 }}>{popup.hotspot.desc}</div>
+
+            {topItem ? (
+              <>
+                {/* Top headline */}
+                <div style={{ background: '#0f0800', border: '1px solid #331100', padding: '8px 10px', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, color: '#ffddaa', lineHeight: 1.4, flex: 1 }}>{topItem.title}</div>
+                    {(() => {
+                      const b = threatBadge(topItem.classification?.level ?? 0);
+                      return (
+                        <span style={{ fontSize: 8, padding: '2px 5px', background: b.bg, color: b.color, border: `1px solid ${b.border}`, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {b.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 0', fontSize: 9 }}>
+                    <span style={{ color: '#443333' }}>TYPE</span>
+                    <span style={{ color: '#443333' }}>LOCATION</span>
+                    <span style={{ color: '#888' }}>{topItem.source?.toUpperCase() || '—'}</span>
+                    <span style={{ color: '#888' }}>{popup.hotspot.location}</span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 9 }}>
+                    <span style={{ color: '#443333' }}>TIME  </span>
+                    <span style={{ color: '#666' }}>{timeAgo(topItem.pubDate)}</span>
+                  </div>
+                  {topItem.link && (
+                    <a href={topItem.link} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8, fontSize: 9, color: '#886644', textDecoration: 'none', letterSpacing: 1 }}>
+                      Source →
+                    </a>
+                  )}
+                </div>
+
+                {/* Related events */}
+                {restItems.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 9, color: '#443333', letterSpacing: 2, marginBottom: 5 }}>RELATED EVENTS</div>
+                    {restItems.map((item, i) => {
+                      const b = threatBadge(item.classification?.level ?? 0);
+                      return (
+                        <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '5px 0', borderBottom: '1px solid #1a0a0a' }}>
+                          <span style={{ fontSize: 7, padding: '2px 4px', background: b.bg, color: b.color, border: `1px solid ${b.border}`, whiteSpace: 'nowrap', flexShrink: 0, marginTop: 1 }}>
+                            {b.label}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 10, color: '#998877', lineHeight: 1.3, wordBreak: 'break-word' }}>{item.title}</div>
+                            <div style={{ fontSize: 8, color: '#443333', marginTop: 2 }}>{timeAgo(item.pubDate)}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize: 10, color: '#443333', padding: '8px 0' }}>
+                {newsItems.length === 0 ? '◌ LOADING NEWS FEEDS...' : '◌ NO RECENT EVENTS DETECTED FOR THIS REGION'}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* HUD — top left */}
+      {/* HUD */}
       <div style={{
         position: 'absolute', top: 8, left: 8, pointerEvents: 'none',
         fontFamily: '"Share Tech Mono", monospace', fontSize: 10, color: '#00ff41', lineHeight: 1.6,
@@ -291,7 +427,7 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         <div style={{ color: '#00ffff' }}>★ MILITARY: {militaryFlights.length}</div>
       </div>
 
-      {/* Flight toggle — top right */}
+      {/* Flight toggle */}
       <button
         onClick={() => setShowFlights((v) => !v)}
         style={{
@@ -306,7 +442,7 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         {showFlights ? '▲ FLIGHTS ON' : '▲ FLIGHTS OFF'}
       </button>
 
-      {/* Legend — bottom right */}
+      {/* Legend */}
       <div style={{
         position: 'absolute', bottom: 8, right: 8, pointerEvents: 'none',
         fontFamily: '"Share Tech Mono", monospace', fontSize: 9,

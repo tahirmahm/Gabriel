@@ -256,6 +256,7 @@ export default function Dashboard() {
                 flights={flights}
                 militaryFlights={militaryFlights}
                 threats={threats}
+                newsItems={newsItems}
                 onFlightSelect={setSelectedFlight}
               />
             </Suspense>
