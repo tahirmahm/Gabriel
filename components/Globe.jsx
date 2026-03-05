@@ -79,35 +79,22 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
 
       // Dark globe style
       viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#050510');
-      viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#050510');
-      viewer.scene.globe.enableLighting = true;
+      viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#1a1a2e');
+      viewer.scene.globe.enableLighting = false;
       viewer.scene.skyBox.show = true;
       viewer.scene.skyAtmosphere.show = true;
 
-      // Night-side imagery
+      // CartoDB Dark Matter tiles — free, no API key, perfect for dark dashboards
       viewer.imageryLayers.removeAll();
       viewer.imageryLayers.addImageryProvider(
-        new Cesium.IonImageryProvider({ assetId: 3845 }) // Earth at Night
-      ).catch(() => {
-        // Fallback to OSM if Ion not available
-        viewer.imageryLayers.addImageryProvider(
-          new Cesium.OpenStreetMapImageryProvider({
-            url: 'https://a.tile.openstreetmap.org/',
-            credit: '',
-          })
-        );
-      });
-
-      // Try Google 3D Photorealistic Tiles
-      const googleKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      if (googleKey && Cesium.createGooglePhotorealistic3DTileset) {
-        Cesium.createGooglePhotorealistic3DTileset({ key: googleKey })
-          .then((tileset) => {
-            viewer.scene.primitives.add(tileset);
-            viewer.scene.globe.show = false; // hide globe when using 3D tiles
-          })
-          .catch(() => {});
-      }
+        new Cesium.UrlTemplateImageryProvider({
+          url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          subdomains: ['a', 'b', 'c', 'd'],
+          credit: '© CARTO © OpenStreetMap contributors',
+          minimumLevel: 0,
+          maximumLevel: 19,
+        })
+      );
 
       // Add hotspot threat zone cylinders
       const hotspots = [
@@ -212,11 +199,12 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
           position: pos,
           orientation,
           point: {
-            pixelSize: flight._military ? 6 : 4,
+            pixelSize: flight._military ? 9 : 5,
             color,
-            outlineColor: Cesium.Color.BLACK,
+            outlineColor: Cesium.Color.BLACK.withAlpha(0.6),
             outlineWidth: 1,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            scaleByDistance: new Cesium.NearFarScalar(1e3, 1.5, 1e7, 0.6),
           },
           label: {
             text: (flight.callsign || id).trim(),
