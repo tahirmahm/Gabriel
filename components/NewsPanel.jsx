@@ -49,6 +49,7 @@ function highlightKeywords(text) {
 export default function NewsPanel({ onNewsClassified }) {
   const [activeTab, setActiveTab] = useState('feed'); // feed | live
   const [activeChannel, setActiveChannel] = useState('bbc');
+  const [liveVideoIds, setLiveVideoIds] = useState({});
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -88,6 +89,25 @@ export default function NewsPanel({ onNewsClassified }) {
     fetchNews();
     const iv = setInterval(fetchNews, 120000); // refresh every 2 min
     return () => clearInterval(iv);
+  }, []); // eslint-disable-line
+
+  // Fetch live video IDs for all channels
+  useEffect(() => {
+    const fetchVideoIds = async () => {
+      const results = {};
+      await Promise.allSettled(
+        YOUTUBE_CHANNELS.map(async (ch) => {
+          try {
+            const res = await fetch(`/api/youtube-live?channelId=${ch.channelId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.videoId) results[ch.id] = data.videoId;
+          } catch {}
+        })
+      );
+      if (isMountedRef.current) setLiveVideoIds(results);
+    };
+    fetchVideoIds();
   }, []); // eslint-disable-line
 
   const filteredItems = newsItems.filter((item) => {
@@ -191,15 +211,30 @@ export default function NewsPanel({ onNewsClassified }) {
               <span style={{ animation: 'blink 1s step-end infinite', fontSize: 8 }}>●</span>
               LIVE — {ch?.label}
             </div>
-            {ch && (
+            {ch && liveVideoIds[ch.id] ? (
               <iframe
-                key={ch.id}
+                key={ch.id + liveVideoIds[ch.id]}
                 style={{ width: '100%', height: '100%', border: 'none' }}
-                src={`https://www.youtube.com/embed/live_stream?channel=${ch.channelId}&autoplay=1&mute=1`}
+                src={`https://www.youtube.com/embed/${liveVideoIds[ch.id]}?autoplay=1&mute=1`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
-            )}
+            ) : ch ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                height: '100%', gap: 12, color: '#004400',
+                fontFamily: '"Share Tech Mono", monospace', fontSize: 11,
+              }}>
+                <div>{liveVideoIds[ch.id] === undefined ? '◌ LOADING STREAM...' : '⚠ NO LIVE STREAM FOUND'}</div>
+                <a
+                  href={`https://www.youtube.com/channel/${ch.channelId}/live`}
+                  target="_blank" rel="noreferrer"
+                  style={{ color: '#00b4d8', fontSize: 10 }}
+                >
+                  → WATCH ON YOUTUBE ↗
+                </a>
+              </div>
+            ) : null}
           </div>
 
           {/* Channel links */}

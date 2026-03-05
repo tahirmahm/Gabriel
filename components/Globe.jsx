@@ -28,6 +28,24 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
   useEffect(() => {
     if (initRef.current || !containerRef.current) return;
 
+    // Inject Cesium CSS
+    if (!document.getElementById('cesium-css')) {
+      const link = document.createElement('link');
+      link.id = 'cesium-css';
+      link.rel = 'stylesheet';
+      link.href = `${CESIUM_CDN}/Widgets/widgets.css`;
+      document.head.appendChild(link);
+    }
+
+    // Inject Cesium JS
+    if (!document.getElementById('cesium-js')) {
+      const script = document.createElement('script');
+      script.id = 'cesium-js';
+      script.src = `${CESIUM_CDN}/Cesium.js`;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
     const tryInit = () => {
       if (typeof window === 'undefined' || !window.Cesium) {
         setTimeout(tryInit, 200);
