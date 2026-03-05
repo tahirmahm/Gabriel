@@ -17,7 +17,9 @@ const Map2D = lazy(() => import('./Map2D'));
 // ── Static conflict zone reference data ─────────────────────────────────────
 const ZONE_DETAILS = {
   'Ukraine': {
+    title: 'UKRAINE WAR THEATER',
     since: 'Feb 24, 2022', location: 'Eastern & Southern Ukraine',
+    casualties: '500,000+ (est.)', displaced: '6M+ refugees',
     status: 'ACTIVE WAR',
     belligerents: ['RUSSIA', 'UKRAINE', 'NATO'],
     description: 'Full-scale Russian invasion. Active ground combat across Donetsk, Zaporizhzhia and Kherson oblasts. NATO supplying weapons, intelligence and air-defence systems.',
@@ -25,31 +27,39 @@ const ZONE_DETAILS = {
     color: '#ff3300',
   },
   'Gaza / Levant': {
-    since: 'Oct 7, 2023', location: 'Gaza Strip · Lebanon · West Bank',
+    title: 'GAZA / LEVANT THEATER',
+    since: 'Oct 7, 2023', location: 'Gaza · Lebanon · West Bank',
+    casualties: '50,000+ killed', displaced: '1.9M Gazans',
     status: 'ACTIVE CONFLICT',
     belligerents: ['ISRAEL', 'IDF', 'HAMAS', 'HEZBOLLAH'],
-    description: 'Israeli military operations in Gaza following Hamas cross-border attack. Northern front with Hezbollah in Lebanon intermittently active. Largest displacement since 1948.',
+    description: 'Israeli military operations in Gaza following Hamas cross-border attack. Northern front with Hezbollah in Lebanon intermittently active. Largest displacement crisis since 1948.',
     keywords: ['israel', 'gaza', 'hamas', 'hezbollah', 'idf', 'beirut', 'west bank', 'netanyahu', 'rafah', 'lebanese'],
     color: '#ff6600',
   },
   'Iran': {
-    since: 'Jan 2024', location: 'Iran · Gulf Region',
+    title: 'IRAN WAR THEATER',
+    since: 'Feb 28, 2026', location: 'Iran (nationwide)',
+    casualties: '200+ killed (first 72hrs)', displaced: 'Millions fleeing major cities',
     status: 'ACTIVE HOSTILITIES',
     belligerents: ['IRAN', 'IRGC', 'USA', 'ISRAEL'],
-    description: 'US-Israeli air campaign targeting Iranian nuclear, missile and leadership infrastructure. Iran retaliating with ballistic missiles and drone swarms across the region. Major escalation ongoing.',
+    description: 'Joint US-Israeli military operation (US: Operation Epic Fury / Israel: Operation Roaring Lion). 1000+ targets struck including military, nuclear, and leadership sites. Iran retaliating with missiles and drones across the region.',
     keywords: ['iran', 'irgc', 'tehran', 'khamenei', 'iranian', 'nuclear', 'persian gulf', 'strait of hormuz'],
     color: '#ff3300',
   },
   'Yemen': {
+    title: 'YEMEN / RED SEA THEATER',
     since: 'Mar 2015', location: 'Yemen · Red Sea',
+    casualties: '377,000+ total', displaced: '4.5M internally',
     status: 'ACTIVE CONFLICT',
     belligerents: ['HOUTHIS', 'ANSARALLAH', 'USA', 'UK', 'SAUDI ARABIA'],
-    description: 'Houthi forces attacking commercial shipping and warships in the Red Sea in solidarity with Gaza. US-UK conducting sustained airstrikes on Houthi positions. Major shipping rerouting via Cape of Good Hope.',
+    description: 'Houthi forces attacking commercial shipping and warships in the Red Sea. US-UK conducting sustained airstrikes on Houthi positions. Major global shipping disruption via Red Sea corridor.',
     keywords: ['yemen', 'houthi', 'red sea', 'shipping', 'aden', 'sanaa', 'ansarallah'],
     color: '#ff6600',
   },
   'Taiwan Strait': {
-    since: 'Ongoing', location: 'Taiwan Strait · Western Pacific',
+    title: 'TAIWAN STRAIT THEATER',
+    since: 'Ongoing', location: 'Taiwan Strait · W. Pacific',
+    casualties: 'No combat losses', displaced: 'N/A',
     status: 'ELEVATED TENSION',
     belligerents: ['CHINA', 'PLA', 'TAIWAN', 'USA'],
     description: 'PLA conducts regular air and naval incursions into Taiwan\'s ADIZ. US carrier strike groups maintain forward presence. Cross-strait tensions elevated following recent PLA exercises.',
@@ -57,7 +67,9 @@ const ZONE_DETAILS = {
     color: '#ff9900',
   },
   'South China Sea': {
+    title: 'SOUTH CHINA SEA THEATER',
     since: 'Ongoing', location: 'South China Sea',
+    casualties: 'Minimal — standoffs', displaced: 'N/A',
     status: 'ELEVATED TENSION',
     belligerents: ['CHINA', 'PHILIPPINES', 'VIETNAM', 'USA'],
     description: 'Disputed territorial waters. Frequent confrontations at Second Thomas Shoal between Chinese Coast Guard and Philippine resupply missions. US freedom-of-navigation operations ongoing.',
@@ -65,18 +77,22 @@ const ZONE_DETAILS = {
     color: '#ff9900',
   },
   'Sudan': {
-    since: 'Apr 2023', location: 'Sudan · Sahel',
+    title: 'SUDAN CIVIL WAR THEATER',
+    since: 'Apr 2023', location: 'Sudan · Sahel Region',
+    casualties: '150,000+ killed', displaced: '8M+ displaced',
     status: 'ACTIVE WAR',
     belligerents: ['SAF', 'RSF', 'DARFUR FACTIONS'],
-    description: 'Civil war between Sudanese Armed Forces and Rapid Support Forces. Widespread atrocities in Darfur. 8M+ displaced — largest displacement crisis globally. Famine conditions spreading.',
+    description: 'Civil war between Sudanese Armed Forces and Rapid Support Forces. Widespread atrocities in Darfur. Largest displacement crisis globally. Famine conditions spreading across country.',
     keywords: ['sudan', 'rsf', 'darfur', 'khartoum', 'sahel', 'mali', 'niger', 'sudanese'],
     color: '#ff9900',
   },
   'Korean Peninsula': {
+    title: 'KOREAN PENINSULA THEATER',
     since: 'Ongoing', location: 'Korean Peninsula',
+    casualties: 'No active combat', displaced: 'N/A',
     status: 'ELEVATED TENSION',
     belligerents: ['DPRK', 'SOUTH KOREA', 'USA', 'RUSSIA'],
-    description: 'North Korea ballistic-missile testing programme active. DPRK troops deployed to Russia supporting Ukraine operations. US-South Korea joint exercises ongoing. Pyongyang rhetoric at elevated levels.',
+    description: 'North Korea ballistic-missile testing programme active. DPRK troops deployed to Russia supporting Ukraine operations. US-South Korea joint exercises ongoing. Pyongyang nuclear rhetoric elevated.',
     keywords: ['korea', 'dprk', 'north korea', 'kim jong', 'pyongyang', 'icbm', 'nuclear test', 'korean'],
     color: '#ff3300',
   },
@@ -367,148 +383,153 @@ export default function Dashboard() {
 function ZoneOverlay({ zone, newsItems, threats, onClose }) {
   const info = ZONE_DETAILS[zone.name] || {};
   const kw   = info.keywords || [];
+  const bColor = zone.color || '#ff6600';
 
-  // Related news: filter by zone keywords, sort by threat level
+  // Related news filtered by zone keywords
   const related = newsItems
-    .filter(n => {
-      const txt = `${n.title} ${n.description || ''}`.toLowerCase();
-      return kw.some(k => txt.includes(k));
-    })
+    .filter(n => kw.some(k => `${n.title} ${n.description || ''}`.toLowerCase().includes(k)))
     .sort((a, b) => (b.classification?.level ?? 0) - (a.classification?.level ?? 0))
-    .slice(0, 8);
+    .slice(0, 10);
 
-  // Zone threat level from matching threats + news
+  // Threat level badge
   const zoneThreats = threats.filter(t =>
     kw.some(k => `${t.msg} ${t.region || ''} ${(t.tags || []).join(' ')}`.toLowerCase().includes(k))
   );
-  const maxNewsLevel = related.length ? Math.max(...related.map(n => n.classification?.level ?? 0)) : 0;
-  const score = zoneThreats.length * 2 + maxNewsLevel;
+  const maxNews = related.length ? Math.max(...related.map(n => n.classification?.level ?? 0)) : 0;
+  const score = zoneThreats.length * 2 + maxNews;
   const levelLabel = score >= 8 ? 'CRITICAL' : score >= 5 ? 'HIGH' : score >= 2 ? 'ELEVATED' : 'MONITORED';
   const levelColor = score >= 8 ? '#ff2222' : score >= 5 ? '#ff6600' : score >= 2 ? '#ffcc00' : '#00ff41';
 
-  const bColor = zone.color || '#ff6600';
+  // Top 4 news titles as "key developments"
+  const keyDev = related.slice(0, 4);
 
   return (
     <div style={{
       position: 'absolute',
-      top: '50%', left: 'calc(var(--layers-w) + 16px)',
-      transform: 'translateY(-50%)',
-      zIndex: 60, width: 360,
-      maxHeight: 'calc(100% - 24px)',
+      top: '50%', left: '50%',
+      transform: 'translate(-30%, -50%)',
+      zIndex: 60, width: 380,
+      maxHeight: 'calc(100% - 32px)',
       display: 'flex', flexDirection: 'column',
-      background: '#050505f2',
-      border: `1px solid ${bColor}`,
+      background: '#060608f5',
+      border: `1px solid ${bColor}88`,
       fontFamily: '"Share Tech Mono", monospace',
-      boxShadow: `0 0 24px ${bColor}33, 0 0 6px #000`,
+      boxShadow: `0 0 32px ${bColor}44, 0 0 8px #000`,
       overflow: 'hidden',
     }}>
       {/* ── Header ── */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '8px 12px', background: bColor + '18',
-        borderBottom: `1px solid ${bColor}55`, flexShrink: 0,
+        padding: '9px 14px', background: bColor + '14',
+        borderBottom: `1px solid ${bColor}44`, flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: '#ff3333', animation: 'blink 1s step-end infinite', fontSize: 8 }}>●</span>
-          <span style={{ color: bColor, fontSize: 13, letterSpacing: 2, fontWeight: 'bold' }}>
-            {zone.name.toUpperCase()}
-          </span>
-        </div>
+        <span style={{ color: bColor, fontSize: 14, letterSpacing: 2 }}>
+          {(info.title || zone.name).toUpperCase()}
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
-            fontSize: 8, padding: '2px 7px',
-            color: levelColor, border: `1px solid ${levelColor}`,
-            letterSpacing: 1,
+            fontSize: 9, padding: '2px 8px', letterSpacing: 1,
+            color: levelColor, border: `1px solid ${levelColor}`, background: levelColor + '18',
           }}>{levelLabel}</span>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#446', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
-          >✕</button>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', color: '#557', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+          }}>✕</button>
         </div>
       </div>
 
-      {/* ── Info grid ── */}
+      {/* ── 4-cell info grid (like reference) ── */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: '6px 12px', padding: '10px 12px 6px',
-        borderBottom: `1px solid #001800`, flexShrink: 0,
+        gap: 0, borderBottom: `1px solid #0d0d0d`, flexShrink: 0,
       }}>
-        {info.since && <ZoneField label="SINCE"    value={info.since} color={bColor} />}
-        {info.location && <ZoneField label="LOCATION" value={info.location} color={bColor} />}
-        {info.status && <ZoneField label="STATUS"   value={info.status} color={levelColor} />}
-        <ZoneField label="THREATS"  value={`${zoneThreats.length} active`} color={zoneThreats.length > 2 ? '#ff4444' : '#00cc33'} />
+        <ZoneCell label="START DATE"  value={info.since}    color={bColor} />
+        <ZoneCell label="CASUALTIES"  value={info.casualties || '—'} color={bColor} />
+        <ZoneCell label="DISPLACED"   value={info.displaced || '—'}  color={bColor} border />
+        <ZoneCell label="LOCATION"    value={info.location}  color={bColor} border />
       </div>
 
       {/* ── Description ── */}
-      {info.description && (
-        <div style={{
-          padding: '8px 12px', fontSize: 9.5, color: '#667',
-          lineHeight: 1.55, borderBottom: '1px solid #001800', flexShrink: 0,
-        }}>
-          {info.description}
-        </div>
-      )}
+      <div style={{
+        padding: '10px 14px', fontSize: 10, color: '#778',
+        lineHeight: 1.6, borderBottom: '1px solid #0d0d0d', flexShrink: 0,
+      }}>
+        {info.description}
+      </div>
 
       {/* ── Belligerents ── */}
       {info.belligerents?.length > 0 && (
         <div style={{
-          padding: '6px 12px', display: 'flex', flexWrap: 'wrap', gap: 5,
-          borderBottom: '1px solid #001800', flexShrink: 0,
+          padding: '7px 14px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
+          borderBottom: '1px solid #0d0d0d', flexShrink: 0,
         }}>
-          <span style={{ fontSize: 7, color: '#334', letterSpacing: 1.5, alignSelf: 'center', marginRight: 4 }}>
-            BELLIGERENTS
-          </span>
+          <span style={{ fontSize: 7, color: '#334', letterSpacing: 2, marginRight: 2 }}>BELLIGERENTS</span>
           {info.belligerents.map(b => (
             <span key={b} style={{
-              fontSize: 8, padding: '2px 6px', letterSpacing: 0.5,
-              color: bColor, border: `1px solid ${bColor}44`,
+              fontSize: 8, padding: '2px 7px',
+              color: bColor, border: `1px solid ${bColor}55`, letterSpacing: 0.5,
             }}>{b}</span>
           ))}
         </div>
       )}
 
-      {/* ── Related news ── */}
+      {/* ── Key developments (top news headlines as bullets) ── */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        <div style={{ padding: '5px 12px 3px', fontSize: 7, color: '#334', letterSpacing: 2 }}>
-          INTELLIGENCE FEED — {related.length} ITEM{related.length !== 1 ? 'S' : ''}
+        <div style={{ padding: '6px 14px 3px', fontSize: 7, color: '#334', letterSpacing: 2 }}>
+          KEY DEVELOPMENTS
         </div>
-        {related.length === 0 ? (
-          <div style={{ padding: '8px 12px', fontSize: 9, color: '#334' }}>◌ NO MATCHING INTEL — MONITORING...</div>
+        {keyDev.length === 0 ? (
+          <div style={{ padding: '8px 14px', fontSize: 9, color: '#334' }}>◌ MONITORING FEEDS...</div>
         ) : (
-          related.map((n, i) => {
+          keyDev.map((n, i) => {
             const lvl = n.classification?.level ?? 0;
-            const badgeColor = lvl >= 4 ? '#ff2222' : lvl >= 3 ? '#ff6600' : lvl >= 2 ? '#ffcc00' : '#334';
-            const badge      = lvl >= 4 ? 'CRIT' : lvl >= 3 ? 'HIGH' : lvl >= 2 ? 'ELEV' : 'INFO';
+            const dotColor = lvl >= 4 ? '#ff2222' : lvl >= 3 ? '#ff6600' : lvl >= 2 ? '#ffcc00' : '#446';
             return (
               <div key={i} style={{
-                display: 'flex', gap: 6, padding: '5px 12px',
-                borderBottom: '1px solid #080808', alignItems: 'flex-start',
+                display: 'flex', gap: 8, padding: '5px 14px',
+                borderBottom: '1px solid #090909', alignItems: 'flex-start',
               }}>
-                <span style={{
-                  fontSize: 7, padding: '1px 4px', flexShrink: 0, marginTop: 1,
-                  color: badgeColor, border: `1px solid ${badgeColor}55`,
-                }}>{badge}</span>
-                <div>
-                  <div style={{ fontSize: 9, color: '#889', lineHeight: 1.4 }}>{n.title}</div>
-                  <div style={{ fontSize: 7, color: '#334', marginTop: 2 }}>
-                    [{n.source?.toUpperCase()}]
-                    {n.pubDate ? ` · ${new Date(n.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </div>
-                </div>
+                <span style={{ color: dotColor, fontSize: 10, flexShrink: 0, marginTop: 1 }}>●</span>
+                <span style={{ fontSize: 9.5, color: '#99a', lineHeight: 1.4 }}>{n.title}</span>
               </div>
             );
           })
+        )}
+        {/* All related intel */}
+        {related.length > 4 && (
+          <>
+            <div style={{ padding: '6px 14px 3px', fontSize: 7, color: '#334', letterSpacing: 2 }}>
+              INTELLIGENCE FEED
+            </div>
+            {related.slice(4).map((n, i) => {
+              const lvl = n.classification?.level ?? 0;
+              const bc = lvl >= 4 ? '#ff2222' : lvl >= 3 ? '#ff6600' : lvl >= 2 ? '#ffcc00' : '#334';
+              const bl = lvl >= 4 ? 'CRIT' : lvl >= 3 ? 'HIGH' : lvl >= 2 ? 'ELEV' : 'INFO';
+              return (
+                <div key={i} style={{
+                  display: 'flex', gap: 6, padding: '4px 14px',
+                  borderBottom: '1px solid #080808', alignItems: 'flex-start',
+                }}>
+                  <span style={{ fontSize: 7, padding: '1px 4px', flexShrink: 0, color: bc, border: `1px solid ${bc}44` }}>{bl}</span>
+                  <div style={{ fontSize: 9, color: '#778', lineHeight: 1.3 }}>{n.title}</div>
+                </div>
+              );
+            })}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function ZoneField({ label, value, color }) {
+function ZoneCell({ label, value, color, border }) {
   return (
-    <div>
-      <div style={{ fontSize: 7, color: '#334', letterSpacing: 1.5, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 10, color: color || '#00cc33', letterSpacing: 0.5 }}>{value}</div>
+    <div style={{
+      padding: '8px 14px',
+      borderRight: border ? 'none' : '1px solid #0d0d0d',
+      borderBottom: '1px solid #0d0d0d',
+    }}>
+      <div style={{ fontSize: 7, color: '#446', letterSpacing: 1.5, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 11, color: color || '#00cc33', lineHeight: 1.3 }}>{value || '—'}</div>
     </div>
   );
 }

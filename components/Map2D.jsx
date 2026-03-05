@@ -21,10 +21,9 @@ function altColor(alt) {
 }
 
 export default function Map2D({ flights, militaryFlights, threats, newsItems, layers, onFlightSelect, onZoneSelect }) {
-  const containerRef = useRef(null);
-  const mapState     = useRef({ map: null, civilLayer: null, milLayer: null, zonesLayer: null, ready: false });
+  const containerRef  = useRef(null);
+  const mapState      = useRef({ map: null, civilLayer: null, milLayer: null, zonesLayer: null, ready: false });
 
-  // Always-fresh refs so callbacks never go stale
   const flightsRef    = useRef(flights);
   const milRef        = useRef(militaryFlights);
   const layersRef     = useRef(layers);
@@ -40,7 +39,6 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
     layersRef.current = layers;
     const s = mapState.current;
     if (!s.ready) return;
-    // Toggle zone layer visibility
     if (layers.conflictZones) { if (!s.map.hasLayer(s.zonesLayer)) s.map.addLayer(s.zonesLayer); }
     else                       { if (s.map.hasLayer(s.zonesLayer))  s.map.removeLayer(s.zonesLayer); }
     renderFlights();
@@ -55,39 +53,24 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
     s.civilLayer.clearLayers();
     s.milLayer.clearLayers();
 
-    // ── Civil flights ──────────────────────────────────────────────────────────
     if (lrs.civilFlights) {
       flightsRef.current.forEach(f => {
         if (!f.latitude || !f.longitude) return;
         if (lrs.emergencyOnly && (f._threatLevel ?? 0) < 3) return;
-
         const sq = String(f.squawk || '');
         const isEmerg = ['7500', '7600', '7700', '7777'].includes(sq);
-        const color = isEmerg        ? '#ff0000'
-                    : (f._threatLevel >= 4) ? '#ff4400'
-                    : (f._threatLevel >= 3) ? '#ff9500'
-                    : altColor(f.baro_altitude);
-
+        const color = isEmerg ? '#ff0000' : (f._threatLevel >= 4) ? '#ff4400' : (f._threatLevel >= 3) ? '#ff9500' : altColor(f.baro_altitude);
         const m = L.circleMarker([f.latitude, f.longitude], {
-          radius:      isEmerg ? 5 : (f._threatLevel >= 3 ? 4 : 2.5),
-          color,
-          fillColor:   color,
-          fillOpacity: isEmerg ? 1.0 : 0.8,
-          weight:      isEmerg ? 2   : 1,
+          radius: isEmerg ? 5 : (f._threatLevel >= 3 ? 4 : 2.5),
+          color, fillColor: color, fillOpacity: isEmerg ? 1.0 : 0.8, weight: isEmerg ? 2 : 1,
         }).addTo(s.civilLayer);
-
         m.on('click', () => selectRef.current && selectRef.current(f));
-
         if (lrs.flightLabels && f.callsign?.trim()) {
-          m.bindTooltip(f.callsign.trim(), {
-            permanent: true, direction: 'right', offset: [4, 0],
-            className: 'map2d-flight-label',
-          });
+          m.bindTooltip(f.callsign.trim(), { permanent: true, direction: 'right', offset: [4, 0], className: 'map2d-flight-label' });
         }
       });
     }
 
-    // ── Military flights ───────────────────────────────────────────────────────
     if (lrs.militaryFlights) {
       milRef.current.forEach(f => {
         if (!f.latitude || !f.longitude) return;
@@ -98,12 +81,10 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
     }
   }
 
-  // ── Map initialization ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
 
-    // Leaflet CSS
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css'; link.rel = 'stylesheet';
@@ -111,7 +92,6 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
       document.head.appendChild(link);
     }
 
-    // Terminal-theme overrides for Leaflet
     if (!document.getElementById('leaflet-theme')) {
       const style = document.createElement('style');
       style.id = 'leaflet-theme';
@@ -132,14 +112,17 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
           padding: 0 !important; white-space: nowrap;
         }
         .map2d-flight-label::before { display: none !important; }
-        .leaflet-popup-content-wrapper {
-          background: #050505ee; border: 1px solid #002800; border-radius: 0;
-          color: #00cc33; font-family: 'Share Tech Mono', monospace; font-size: 11px;
-          padding: 6px 10px;
-        }
-        .leaflet-popup-tip { background: #050505ee; }
-        .leaflet-popup-close-button { color: #004400 !important; }
         .leaflet-control-attribution { display: none !important; }
+        .zone-hotspot {
+          cursor: pointer !important;
+          transition: transform 0.15s;
+        }
+        .zone-hotspot:hover { transform: scale(1.3); }
+        @keyframes zonePulse {
+          0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+          70%  { box-shadow: 0 0 0 8px transparent; opacity: 0.7; }
+          100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+        }
       `;
       document.head.appendChild(style);
     }
@@ -148,9 +131,11 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
       if (destroyed || !containerRef.current || !window.L) return;
       const L = window.L;
 
+      // Use SVG renderer (NOT canvas) so L.circle clicks work reliably
       const map = L.map(containerRef.current, {
         center: [25, 20], zoom: 3,
-        zoomControl: false, attributionControl: false, preferCanvas: true,
+        zoomControl: false, attributionControl: false,
+        renderer: L.svg(),
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -159,34 +144,63 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
 
       L.control.zoom({ position: 'topright' }).addTo(map);
 
+      // Use canvas renderer for flight layers (performance for many markers)
+      const canvasRenderer = L.canvas();
       const civilLayer  = L.layerGroup().addTo(map);
       const milLayer    = L.layerGroup().addTo(map);
       const zonesLayer  = L.layerGroup().addTo(map);
 
-      // Conflict zone circles + labels
       CONFLICT_ZONES.forEach(z => {
+        // Visual fill circle (SVG, non-interactive — just decorative)
         L.circle([z.lat, z.lon], {
-          radius: z.radius, color: z.color, fillColor: z.color,
-          fillOpacity: 0.07, weight: 1.5, dashArray: '6,10',
-        })
-        .on('click', () => zoneSelectRef.current && zoneSelectRef.current(z))
-        .addTo(zonesLayer);
+          renderer: L.svg(),
+          radius: z.radius,
+          color: z.color, fillColor: z.color,
+          fillOpacity: 0.1, weight: 1.5, dashArray: '6,10',
+          interactive: false,
+        }).addTo(zonesLayer);
 
-        L.marker([z.lat, z.lon], {
+        // Pulsing clickable hotspot marker at center — ALWAYS works regardless of renderer
+        const hotspotIcon = L.divIcon({
+          className: 'zone-hotspot',
+          html: `<div style="
+            width:16px; height:16px; border-radius:50%;
+            background:${z.color};
+            border:2px solid ${z.color};
+            box-shadow:0 0 10px ${z.color}, 0 0 20px ${z.color}55;
+            animation:zonePulse 2s ease-in-out infinite;
+            color:${z.color};
+          "></div>`,
+          iconSize:   [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        L.marker([z.lat, z.lon], { icon: hotspotIcon, interactive: true, zIndexOffset: 500 })
+          .on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            if (zoneSelectRef.current) zoneSelectRef.current(z);
+          })
+          .addTo(zonesLayer);
+
+        // Zone name label (non-interactive, floated slightly off-center)
+        L.marker([z.lat + 1.5, z.lon + 1], {
           icon: L.divIcon({
             className: '',
-            html: `<div style="color:${z.color};font-size:9px;font-family:'Share Tech Mono',monospace;`
-                + `letter-spacing:1px;white-space:nowrap;pointer-events:none;`
-                + `text-shadow:0 0 6px #000,0 0 3px #000">${z.name.toUpperCase()}</div>`,
+            html: `<div style="
+              color:${z.color}; font-size:9px;
+              font-family:'Share Tech Mono',monospace;
+              letter-spacing:1px; white-space:nowrap;
+              pointer-events:none;
+              text-shadow:0 0 6px #000,0 0 3px #000,0 0 12px ${z.color}88;
+              font-weight:bold;
+            ">${z.name.toUpperCase()}</div>`,
             iconAnchor: [0, 0],
           }),
           interactive: false,
         }).addTo(zonesLayer);
       });
 
-      mapState.current = { map, civilLayer, milLayer, zonesLayer, ready: true };
-
-      // Render with current data after a short delay for layer groups to settle
+      mapState.current = { map, civilLayer, milLayer, zonesLayer, ready: true, canvasRenderer };
       setTimeout(() => { if (!destroyed) renderFlights(); }, 80);
     }
 
@@ -199,7 +213,6 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
       script.onload = initMap;
       document.head.appendChild(script);
     } else {
-      // Script tag exists but hasn't fired onload yet
       document.getElementById('leaflet-js').addEventListener('load', initMap, { once: true });
     }
 
@@ -213,9 +226,6 @@ export default function Map2D({ flights, militaryFlights, threats, newsItems, la
   }, []); // eslint-disable-line
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height: '100%', background: '#0d1117' }}
-    />
+    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#0d1117' }} />
   );
 }
