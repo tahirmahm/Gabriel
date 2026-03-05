@@ -1,0 +1,17 @@
+{
+  "framework": "nextjs",
+  "functions": {
+    "app/api/opensky/route.js": { "maxDuration": 10 },
+    "app/api/adsb/route.js": { "maxDuration": 10 },
+    "app/api/rss/route.js": { "maxDuration": 15 }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
+  ]
+}
