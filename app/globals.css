@@ -20,7 +20,6 @@
   --status-h: 46px;
   --bottom-h: 200px;
   --left-w: 270px;
-  --right-w: 310px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -65,17 +64,16 @@ html, body {
 .main-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--left-w) 1fr var(--right-w);
+  grid-template-columns: var(--left-w) 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
   min-height: 0;
 }
 
 .main-grid.globe-focus {
-  grid-template-columns: 0 1fr 0;
+  grid-template-columns: 0 1fr;
 }
-.main-grid.globe-focus .panel-left,
-.main-grid.globe-focus .panel-right {
+.main-grid.globe-focus .panel-left {
   display: none;
 }
 
@@ -102,9 +100,6 @@ html, body {
   overflow: hidden;
 }
 
-.panel-right {
-  border-left: 1px solid var(--border-bright);
-}
 
 /* ─── Globe toggle button ─────────────────────────────────────────────────── */
 
@@ -203,7 +198,6 @@ html, body {
 @media (max-width: 1200px) {
   :root {
     --left-w: 230px;
-    --right-w: 260px;
   }
 }
 
@@ -212,6 +206,6 @@ html, body {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
   }
-  .panel-left, .panel-right { display: none; }
+  .panel-left { display: none; }
   :root { --bottom-h: 160px; }
 }

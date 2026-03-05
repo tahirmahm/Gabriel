@@ -216,21 +216,22 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         terrainProvider: new Cesium.EllipsoidTerrainProvider(),
       });
 
-      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#050508');
-      viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0d0d14');
+      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#a8c0d0');
+      viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#c8dde8');
       viewer.scene.globe.enableLighting = false;
       viewer.scene.globe.showGroundAtmosphere = false;
       viewer.scene.skyAtmosphere.show = false;
       viewer.scene.fog.enabled = false;
       viewer.scene.skyBox.show = true;
 
+      // CartoDB Voyager — Google Maps political style (free, no API key)
       viewer.imageryLayers.removeAll();
       viewer.imageryLayers.addImageryProvider(
         new Cesium.UrlTemplateImageryProvider({
-          url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+          url: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
           credit: '',
           minimumLevel: 0,
-          maximumLevel: 18,
+          maximumLevel: 19,
         })
       );
 
@@ -326,7 +327,7 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#050508' }} />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#c8dde8' }} />
 
       {/* ── Conflict zone news popup ── */}
       {popup?.hotspot && (
@@ -417,12 +418,14 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         </div>
       )}
 
-      {/* HUD */}
+      {/* HUD — dark pill so it's readable on light political map */}
       <div style={{
         position: 'absolute', top: 8, left: 8, pointerEvents: 'none',
-        fontFamily: '"Share Tech Mono", monospace', fontSize: 10, color: '#00ff41', lineHeight: 1.6,
+        fontFamily: '"Share Tech Mono", monospace', fontSize: 10, lineHeight: 1.6,
+        background: 'rgba(5,5,8,0.75)', padding: '5px 9px',
+        border: '1px solid rgba(0,255,65,0.25)',
       }}>
-        <div>● LIVE TRACKING</div>
+        <div style={{ color: '#00ff41' }}>● LIVE TRACKING</div>
         <div style={{ color: '#00b4d8' }}>▲ CIVIL: {flights.length}</div>
         <div style={{ color: '#00ffff' }}>★ MILITARY: {militaryFlights.length}</div>
       </div>
@@ -432,7 +435,7 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
         onClick={() => setShowFlights((v) => !v)}
         style={{
           position: 'absolute', top: 8, right: 8,
-          background: showFlights ? 'rgba(0,180,216,0.15)' : 'rgba(0,0,0,0.6)',
+          background: showFlights ? 'rgba(0,40,60,0.85)' : 'rgba(10,10,10,0.85)',
           border: `1px solid ${showFlights ? '#00b4d8' : '#333'}`,
           color: showFlights ? '#00b4d8' : '#555',
           fontFamily: '"Share Tech Mono", monospace', fontSize: 9,
@@ -446,12 +449,13 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
       <div style={{
         position: 'absolute', bottom: 8, right: 8, pointerEvents: 'none',
         fontFamily: '"Share Tech Mono", monospace', fontSize: 9,
-        color: 'rgba(0,255,65,0.45)',
+        background: 'rgba(5,5,8,0.75)', padding: '3px 8px',
+        border: '1px solid rgba(0,255,65,0.15)',
       }}>
-        <span style={{ color: '#00b4d8' }}>● </span>CIVIL &nbsp;
-        <span style={{ color: '#00ffff' }}>★ </span>MIL &nbsp;
-        <span style={{ color: '#ff0000' }}>● </span>EMRG &nbsp;
-        <span style={{ color: '#ff4400', border: '1px solid #ff440055', padding: '0 4px' }}>ZONE</span> HOTSPOT
+        <span style={{ color: '#00b4d8' }}>● </span><span style={{ color: '#aaa' }}>CIVIL </span>&nbsp;
+        <span style={{ color: '#00ffff' }}>★ </span><span style={{ color: '#aaa' }}>MIL </span>&nbsp;
+        <span style={{ color: '#ff0000' }}>● </span><span style={{ color: '#aaa' }}>EMRG </span>&nbsp;
+        <span style={{ color: '#ff4400', border: '1px solid #ff440055', padding: '0 4px' }}>ZONE</span><span style={{ color: '#aaa' }}> HOTSPOT</span>
       </div>
     </div>
   );
