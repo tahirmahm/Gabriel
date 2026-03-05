@@ -326,6 +326,22 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
       viewer.clock.shouldAnimate = true;
       viewer.clock.multiplier = 1;
 
+      // ── Trackpad / scroll wheel zoom ─────────────────────────────────────
+      const ctrl = viewer.scene.screenSpaceCameraController;
+      // Accept both scroll wheel and two-finger pinch for zoom
+      ctrl.zoomEventTypes = [
+        Cesium.CameraEventType.WHEEL,
+        Cesium.CameraEventType.PINCH,
+      ];
+      ctrl.tiltEventTypes = [
+        Cesium.CameraEventType.MIDDLE_DRAG,
+        Cesium.CameraEventType.PINCH,
+      ];
+      // Smooth, responsive zoom speed for laptop trackpads
+      ctrl.wheelZoomAmount = 0.3;
+      ctrl.minimumZoomDistance = 100;
+      ctrl.maximumZoomDistance = 3e7;
+
       // CartoDB Voyager — Google Maps political style
       viewer.imageryLayers.removeAll();
       viewer.imageryLayers.addImageryProvider(
@@ -441,9 +457,37 @@ export default function Globe({ flights = [], militaryFlights = [], threats = []
   const topItem = popup?.related?.[0];
   const restItems = popup?.related?.slice(1, 6) ?? [];
 
+  // Zoom helpers
+  const zoomIn  = () => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.camera.zoomIn(viewer.camera.positionCartographic.height * 0.4);
+  };
+  const zoomOut = () => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.6);
+  };
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#c8dde8' }} />
+
+      {/* ── Zoom buttons ── */}
+      <div style={{
+        position: 'absolute', bottom: 40, right: 10, zIndex: 10,
+        display: 'flex', flexDirection: 'column', gap: 2,
+      }}>
+        {[{ label: '+', fn: zoomIn }, { label: '−', fn: zoomOut }].map(({ label, fn }) => (
+          <button key={label} onClick={fn} style={{
+            width: 32, height: 32,
+            background: 'rgba(5,5,8,0.82)', border: '1px solid #003300',
+            color: '#00ff41', fontFamily: '"Share Tech Mono", monospace',
+            fontSize: 18, lineHeight: 1, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>{label}</button>
+        ))}
+      </div>
 
       {/* ── Conflict zone popup ── */}
       {popup?.hotspot && (
